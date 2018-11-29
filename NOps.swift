@@ -202,10 +202,27 @@ extension Numerics where Element: AccelerateFloatingPoint {
 		result[0] = a[0]
 		return result
 	}
+	public static func maximum(_ a: Vector) -> Element {
+		return a.withStorageAccess { aacc in
+			var val = -Element.infinity
+			Element.mx_maxv(aacc.base, aacc.stride, C: &val, numericCast(aacc.count))
+			return val
+		}
+	}
+	public static func minimum(_ a: Vector) -> Element {
+		return a.withStorageAccess { aacc in
+			var val = -Element.infinity
+			Element.mx_minv(aacc.base, aacc.stride, C: &val, numericCast(aacc.count))
+			return val
+		}
+	}
 }
 
 // MARK: - Vector: Deriving new ones + operators
 extension NVector where Element: AccelerateFloatingPoint {
+	public var maximum: Element { return Numerics.maximum(self) }
+	public var minimum: Element { return Numerics.minimum(self) }
+	
 	public func padding(before: Int, after: Int, mode: PaddingMode = .edge) -> Vector {
 		precondition(before >= 0)
 		precondition(after >= 0)

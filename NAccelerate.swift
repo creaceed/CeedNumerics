@@ -62,6 +62,10 @@ public protocol AccelerateFloatingPoint: NValue, NumericsFloatingPoint {
 	static func mx_vadd(_ A: PointerType, _ IA: vDSP_Stride, _ B: PointerType, _ IB: vDSP_Stride, _ C: MutablePointerType, _ IC: vDSP_Stride, _ N: vDSP_Length)
 	static func mx_vsub(_ A: PointerType, _ IA: vDSP_Stride, _ B: PointerType, _ IB: vDSP_Stride, _ C: MutablePointerType, _ IC: vDSP_Stride, _ N: vDSP_Length)
 	
+	// min/max
+	static func mx_minv(_ A: PointerType, _ IA: vDSP_Stride, C: inout Element, _ N: vDSP_Length)
+	static func mx_maxv(_ A: PointerType, _ IA: vDSP_Stride, C: inout Element, _ N: vDSP_Length)
+	
 	// CBLAS
 	static func mx_gemm(order: CBLAS_ORDER, transA: CBLAS_TRANSPOSE, transB: CBLAS_TRANSPOSE, M: Int32, N: Int32, K: Int32, alpha: Element, A: PointerType, lda: Int32, B: PointerType, ldb: Int32, beta: Element, C: MutablePointerType, ldc: Int32)
 }
@@ -124,7 +128,14 @@ extension Double: AccelerateFloatingPoint {
 		_performanceCheckStride(IA, IB, IC)
 		vDSP_vsubD(B, IB, A, IA, C, IC, N)
 	}
-	
+	public static func mx_minv(_ A: PointerType, _ IA: vDSP_Stride, C: inout Element, _ N: vDSP_Length) {
+		_performanceCheckStride(IA)
+		vDSP_minvD(A, IA, &C, N)
+	}
+	public static func mx_maxv(_ A: PointerType, _ IA: vDSP_Stride, C: inout Element, _ N: vDSP_Length) {
+		_performanceCheckStride(IA)
+		vDSP_maxvD(A, IA, &C, N)
+	}
 	// CBLAS
 	public static func mx_gemm(order: CBLAS_ORDER, transA: CBLAS_TRANSPOSE, transB: CBLAS_TRANSPOSE, M: Int32, N: Int32, K: Int32, alpha: Element, A: PointerType, lda: Int32, B: PointerType, ldb: Int32, beta: Element, C: MutablePointerType, ldc: Int32) {
 		cblas_dgemm(order, transA, transB, M, N, K, alpha, A, lda, B, ldb, beta, C, ldc)
@@ -188,7 +199,14 @@ extension Float: AccelerateFloatingPoint {
 		_performanceCheckStride(IA, IB, IC)
 		vDSP_vsub(B, IB, A, IA, C, IC, N)
 	}
-	
+	public static func mx_minv(_ A: PointerType, _ IA: vDSP_Stride, C: inout Element, _ N: vDSP_Length) {
+		_performanceCheckStride(IA)
+		vDSP_minv(A, IA, &C, N)
+	}
+	public static func mx_maxv(_ A: PointerType, _ IA: vDSP_Stride, C: inout Element, _ N: vDSP_Length) {
+		_performanceCheckStride(IA)
+		vDSP_maxv(A, IA, &C, N)
+	}
 	// CBLAS
 	public static func mx_gemm(order: CBLAS_ORDER, transA: CBLAS_TRANSPOSE, transB: CBLAS_TRANSPOSE, M: Int32, N: Int32, K: Int32, alpha: Element, A: PointerType, lda: Int32, B: PointerType, ldb: Int32, beta: Element, C: MutablePointerType, ldc: Int32) {
 		cblas_sgemm(order, transA, transB, M, N, K, alpha, A, lda, B, ldb, beta, C, ldc)

@@ -28,7 +28,15 @@ extension Numerics where Element: LinearSolverFloatingPoint {
 			}
 		}
 	}
-	
+	public static func polyval(_ poly: Vector, x: Element) -> Element {
+		var res: Element = 0.0
+		var xp: Element = 1.0
+		for i in 0..<poly.size {
+			res += poly[i] * xp
+			xp *= x
+		}
+		return res
+	}
 	public static func polyval(_ poly: Vector, x: Vector) -> Vector { return x._deriving { polyval(poly, x: x, result: $0) } }
 	
 	// Fitting a polynomial of given degree
