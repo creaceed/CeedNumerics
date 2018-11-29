@@ -35,6 +35,8 @@ public class NMatrix<Element: NValue> {
 	private let layout: NMatrixLayout
 	private let slices: (rows: NResolvedSlice, columns: NResolvedSlice)
 	
+	public var rawData : Data { return storage.rawData	}
+	
 	public var rows: Int { return slices.rows.rcount }
 	public var columns: Int { return slices.columns.rcount }
 	
@@ -121,6 +123,11 @@ public class NMatrix<Element: NValue> {
 		return Matrix(storage: storage, layout: layout, slices: (rslice, cslice))
 	}
 	
+	internal func _storageIterator() -> NStorage<Element>.QuadraticIterator {
+		let it = NStorage<Element>.QuadraticIterator(layout: layout, slices: slices)
+		return it
+	}
+	
 	private func _storageLocation(row: Int, columns: Int) -> Int {
 		let r = slices.rows.position(at: row)
 		let c = slices.columns.position(at: columns)
@@ -139,7 +146,7 @@ public class NMatrix<Element: NValue> {
 	
 	// Access
 	public func set(_ value: Element) {
-		var it = NStorage<Element>.QuadraticIterator(layout: layout, slices: slices)
+		var it = _storageIterator()
 		while let pos = it.next() {
 			storage[pos] = value
 		}
@@ -160,8 +167,8 @@ extension NMatrix where Element: SignedNumeric, Element.Magnitude == Element {
 	public func isEqual(to rhs: NMatrix, tolerance: Element) -> Bool {
 		precondition(rhs.shape == shape)
 		
-		var lit = NStorage<Element>.QuadraticIterator(layout: layout, slices: slices)
-		var rit = NStorage<Element>.QuadraticIterator(layout: rhs.layout, slices: rhs.slices)
+		var lit = self._storageIterator()
+		var rit = rhs._storageIterator()
 		
 		// TODO: could be faster
 		while let pos = lit.next(), let rpos = rit.next() {

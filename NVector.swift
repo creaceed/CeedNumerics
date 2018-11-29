@@ -66,6 +66,12 @@ public class NVector<Element: NValue> {
 			_ = UnsafeMutableBufferPointer(start: access.base, count: self.size).initialize(repeating: value)
 		}
 	}
+	public convenience init(size: Int, generator: (_ index: Int) -> Element) {
+		self.init(size: size)
+		for i in 0..<size {
+			self[i] = generator(i)
+		}
+	}
 	
 	public func copy() -> Vector {
 		let result = Vector(size: size)
@@ -164,6 +170,7 @@ extension NVector: NDimensionalType {
 		get { assert(index.count == 1); return self[index[0]] }
 		set { assert(index.count == 1); self[index[0]] = newValue }
 	}
+	public var isCompact: Bool { return isCompact(dimension: 0) }
 	public func isCompact(dimension: Int) -> Bool {
 		assert(dimension == 0)
 		return abs(layout.stride * slice.rstep) == 1

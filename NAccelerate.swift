@@ -33,6 +33,7 @@ public protocol AccelerateFloatingPoint: NValue, NumericsFloatingPoint {
 	typealias MutablePointerType = UnsafeMutablePointer<Self>
 	typealias Element = Self
 	
+	// vDSP
 	// convolve
 	static func mx_conv(_ __A: PointerType, _ __IA: vDSP_Stride, _ __F: PointerType, _ __IF: vDSP_Stride, _ __C: MutablePointerType, _ __IC: vDSP_Stride, _ __N: vDSP_Length, _ __P: vDSP_Length)
 	
@@ -48,6 +49,9 @@ public protocol AccelerateFloatingPoint: NValue, NumericsFloatingPoint {
 	// Matrix transpose
 	static func mx_mtrans(_ A: PointerType, _ IA: vDSP_Stride, _ C: MutablePointerType, _ IC: vDSP_Stride, _ M: vDSP_Length, _ N: vDSP_Length)
 	
+	// Polynomial C(i) = Σp A(p)*B(i)^(P-p)
+	static func mx_vpoly(_ A: PointerType, _ IA: vDSP_Stride, _ B: PointerType, _ IB: vDSP_Stride, _ C: MutablePointerType, _ IC: vDSP_Stride, _ N: vDSP_Length, _ P: vDSP_Length)
+	
 	// mul/div/add/sub, element wise and scalar
 	static func mx_vdiv(_ A: PointerType, _ IA: vDSP_Stride, _ B: PointerType, _ IB: vDSP_Stride, _ C: MutablePointerType, _ IC: vDSP_Stride, _ N: vDSP_Length)
 	static func mx_vmul(_ A: PointerType, _ IA: vDSP_Stride, _ B: PointerType, _ IB: vDSP_Stride, _ C: MutablePointerType, _ IC: vDSP_Stride, _ N: vDSP_Length)
@@ -57,6 +61,9 @@ public protocol AccelerateFloatingPoint: NValue, NumericsFloatingPoint {
 	static func mx_vsadd(_ A: PointerType, _ IA: vDSP_Stride, _ B: Element, _ C: MutablePointerType, _ IC: vDSP_Stride, _ N: vDSP_Length)
 	static func mx_vadd(_ A: PointerType, _ IA: vDSP_Stride, _ B: PointerType, _ IB: vDSP_Stride, _ C: MutablePointerType, _ IC: vDSP_Stride, _ N: vDSP_Length)
 	static func mx_vsub(_ A: PointerType, _ IA: vDSP_Stride, _ B: PointerType, _ IB: vDSP_Stride, _ C: MutablePointerType, _ IC: vDSP_Stride, _ N: vDSP_Length)
+	
+	// CBLAS
+	static func mx_gemm(order: CBLAS_ORDER, transA: CBLAS_TRANSPOSE, transB: CBLAS_TRANSPOSE, M: Int32, N: Int32, K: Int32, alpha: Element, A: PointerType, lda: Int32, B: PointerType, ldb: Int32, beta: Element, C: MutablePointerType, ldc: Int32)
 }
 
 extension Double: AccelerateFloatingPoint {
@@ -73,6 +80,10 @@ extension Double: AccelerateFloatingPoint {
 		var a=A, b=B
 		_performanceCheckStride(IC)
 		vDSP_vrampD(&a, &b, C, IC, N)
+	}
+	public static func mx_vpoly(_ A: PointerType, _ IA: vDSP_Stride, _ B: PointerType, _ IB: vDSP_Stride, _ C: MutablePointerType, _ IC: vDSP_Stride, _ N: vDSP_Length, _ P: vDSP_Length) {
+		_performanceCheckStride(IA, IB, IC)
+		vDSP_vpolyD(A, IA, B, IB, C, IC, N, P)
 	}
 	public static func mx_vdiv(_ A: PointerType, _ IA: vDSP_Stride, _ B: PointerType, _ IB: vDSP_Stride, _ C: MutablePointerType, _ IC: vDSP_Stride, _ N: vDSP_Length) {
 		_performanceCheckStride(IA, IB, IC)
@@ -113,6 +124,11 @@ extension Double: AccelerateFloatingPoint {
 		_performanceCheckStride(IA, IB, IC)
 		vDSP_vsubD(B, IB, A, IA, C, IC, N)
 	}
+	
+	// CBLAS
+	public static func mx_gemm(order: CBLAS_ORDER, transA: CBLAS_TRANSPOSE, transB: CBLAS_TRANSPOSE, M: Int32, N: Int32, K: Int32, alpha: Element, A: PointerType, lda: Int32, B: PointerType, ldb: Int32, beta: Element, C: MutablePointerType, ldc: Int32) {
+		cblas_dgemm(order, transA, transB, M, N, K, alpha, A, lda, B, ldb, beta, C, ldc)
+	}
 }
 extension Float: AccelerateFloatingPoint {
 	public static func mx_conv(_ __A: PointerType, _ __IA: vDSP_Stride, _ __F: PointerType, _ __IF: vDSP_Stride, _ __C: MutablePointerType, _ __IC: vDSP_Stride, _ __N: vDSP_Length, _ __P: vDSP_Length) {
@@ -128,6 +144,10 @@ extension Float: AccelerateFloatingPoint {
 		var a=A, b=B
 		_performanceCheckStride(IC)
 		vDSP_vramp(&a, &b, C, IC, N)
+	}
+	public static func mx_vpoly(_ A: PointerType, _ IA: vDSP_Stride, _ B: PointerType, _ IB: vDSP_Stride, _ C: MutablePointerType, _ IC: vDSP_Stride, _ N: vDSP_Length, _ P: vDSP_Length) {
+		_performanceCheckStride(IA, IB, IC)
+		vDSP_vpoly(A, IA, B, IB, C, IC, N, P)
 	}
 	public static func mx_vdiv(_ A: PointerType, _ IA: vDSP_Stride, _ B: PointerType, _ IB: vDSP_Stride, _ C: MutablePointerType, _ IC: vDSP_Stride, _ N: vDSP_Length) {
 		_performanceCheckStride(IA, IB, IC)
@@ -167,5 +187,10 @@ extension Float: AccelerateFloatingPoint {
 	public static func mx_vsub(_ A: PointerType, _ IA: vDSP_Stride, _ B: PointerType, _ IB: vDSP_Stride, _ C: MutablePointerType, _ IC: vDSP_Stride, _ N: vDSP_Length) {
 		_performanceCheckStride(IA, IB, IC)
 		vDSP_vsub(B, IB, A, IA, C, IC, N)
+	}
+	
+	// CBLAS
+	public static func mx_gemm(order: CBLAS_ORDER, transA: CBLAS_TRANSPOSE, transB: CBLAS_TRANSPOSE, M: Int32, N: Int32, K: Int32, alpha: Element, A: PointerType, lda: Int32, B: PointerType, ldb: Int32, beta: Element, C: MutablePointerType, ldc: Int32) {
+		cblas_sgemm(order, transA, transB, M, N, K, alpha, A, lda, B, ldb, beta, C, ldc)
 	}
 }

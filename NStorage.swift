@@ -29,6 +29,10 @@ public class NStorage<Element: NValue> {
 	private let pointer: UnsafeMutablePointer<Element>
 	public let count: Int
 	
+	public var rawData: Data {
+		return Data(bytes: UnsafeRawPointer(pointer), count: count * MemoryLayout<Element>.stride)
+	}
+	
 	public struct Access {
 		public var base: UnsafeMutablePointer<Element>
 		public var count: Int

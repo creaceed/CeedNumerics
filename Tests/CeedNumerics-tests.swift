@@ -93,22 +93,38 @@ class CeedNumerics_tests_mac: XCTestCase {
 	}
 	
 	func testAPIs() {
+		let mat = NMatrixd([[1.0,2.0,3.0],
+							[1.0,-2.0,3.0],
+							[1.0,2.0,1.0],
+							[-1.0,2.0,1.0]])
+		let v3 = NVectord([1.0, 2.0, 3.0])
+		let matv3res = NVectord([14.0, 6.0, 8.0, 6.0])
 		let vec = NVectord([1.0, 2.0, 1.5, 80.0 , 0.8, 1.6, 1.7])
-		let ramp = NVectord([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0])
+//		let ramp = NVectord([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0])
+		
+		let poly = NVectord([1.0, -1.0, 2.0])
+		let xval = NVectord([-1.0, 0.0, 1.0, 2.0])
+		let expected_polyval = NVectord([4.0, 1.0, 2.0, 7.0])
 		
 		let median3 = Numerics.median(input: vec, kernel: 3)
 		let median3res = NVectord([1.0, 1.5, 2.0, 1.5, 1.6, 1.6, 1.7])
 		
-		let padded = vec.padding(before: 5, after: 3)
+//		let padded = vec.padding(before: 5, after: 3)
 		
-		print("median K=3: \n\(median3)")
-		print("median k=5: \n\(Numerics.median(input: vec, kernel: 5))")
-		
-		print("pad \(padded)")
-		
-		print("cumcum: \(Numerics.cumsum(ramp))")
+//		print("median K=3: \n\(median3)")
+//		print("median k=5: \n\(Numerics.median(input: vec, kernel: 5))")
+//
+//		print("pad \(padded)")
+//
+//		print("cumcum: \(Numerics.cumsum(ramp))")
+//
+//		print("mat * vec: \(mat * v3)")
+//
+//		print("poly eval: \(Numerics.polyval(poly, x: xval))")
 		
 		XCTAssert(equals(median3, median3res))
+		XCTAssert(equals(mat * v3, matv3res))
+		XCTAssert(equals(Numerics.polyval(poly, x: xval), expected_polyval))
 	}
 	
 	func testBasicTensors() {

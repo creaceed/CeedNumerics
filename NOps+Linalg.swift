@@ -10,8 +10,8 @@ import Foundation
 import Accelerate
 
 public enum LinearAlgError : Error {
-	case lapackIllegalArgument(function: String, index: Int32)
-	case lapackZeroFactor(index: Int32)
+	case lapackIllegalArgument(function: String, index: Int)
+	case lapackZeroFactor(index: Int)
 	case lapackSingularMatrix
 }
 
@@ -89,9 +89,9 @@ extension Numerics where Element : LinearSolverFloatingPoint {
 		
 		if (status > 0) {
 			//logError("Could not solve system (optimum size). Status is: \(status)");
-			throw LinearAlgError.lapackIllegalArgument(function: "gels (query)", index: status)
+			throw LinearAlgError.lapackIllegalArgument(function: "gels (query)", index: numericCast(status))
 		} else if(status < 0) {
-			throw LinearAlgError.lapackZeroFactor(index: -status)
+			throw LinearAlgError.lapackZeroFactor(index: numericCast(-status))
 		}
 		
 		var workspace = [Element](repeating: .none, count: Int(lwork))
@@ -104,9 +104,9 @@ extension Numerics where Element : LinearSolverFloatingPoint {
 		
 		if (status > 0) {
 			//logError("Could not solve system (optimum size). Status is: \(status)");
-			throw LinearAlgError.lapackIllegalArgument(function: "gels", index: status)
+			throw LinearAlgError.lapackIllegalArgument(function: "gels", index: numericCast(status))
 		} else if(status < 0) {
-			throw LinearAlgError.lapackZeroFactor(index: -status)
+			throw LinearAlgError.lapackZeroFactor(index: numericCast(-status))
 		}
 		
 		let overdetermined = (m > n)
@@ -170,10 +170,11 @@ extension Numerics where Element : LinearSolverFloatingPoint {
 
 		try output.withStorageAccess { oacc in
 			var n1 = nc, n2 = nc, n3 = nc
+			// this does the invert in column major (transposed). Since T(X-1) = (TX)-1, that's just fine ;-)
 			_ = Element.mx_getrf(m: &n1, n: &n2, a: oacc.base, lda: &n3, ipiv: &ipiv, info: &info)
-			guard info == 0 else { throw info>0 ? LinearAlgError.lapackSingularMatrix : LinearAlgError.lapackIllegalArgument(function: "getrf", index: -info)}
+			guard info == 0 else { throw info>0 ? LinearAlgError.lapackSingularMatrix : LinearAlgError.lapackIllegalArgument(function: "getrf", index: numericCast(-info))}
 			_ = Element.mx_getri(n: &n1, a: oacc.base, lda: &n2, ipiv: &ipiv, work: &work, lwork: &lwork, info: &info)
-			guard info == 0 else { throw info>0 ? LinearAlgError.lapackSingularMatrix : LinearAlgError.lapackIllegalArgument(function: "getri", index: -info)}
+			guard info == 0 else { throw info>0 ? LinearAlgError.lapackSingularMatrix : LinearAlgError.lapackIllegalArgument(function: "getri", index: numericCast(-info))}
 		}
 	}
 }
