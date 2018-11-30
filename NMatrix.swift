@@ -154,7 +154,6 @@ public class NMatrix<Element: NValue> {
 	public subscript(_ rowSlice: NSliceExpression, _ colSlice: NSliceExpression) -> Matrix {
 		let rslice = rowSlice.resolve(within: slices.rows)
 		let cslice = colSlice.resolve(within: slices.columns)
-		print(rowSlice)
 		
 		return Matrix(storage: storage, layout: layout, slices: (rslice, cslice))
 	}
