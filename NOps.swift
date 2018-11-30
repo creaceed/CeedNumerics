@@ -202,6 +202,20 @@ extension Numerics where Element: AccelerateFloatingPoint {
 		result[0] = a[0]
 		return result
 	}
+	public static func mean(_ a: Vector) -> Element {
+		return a.withStorageAccess { aacc in
+			var val: Element = .none
+			Element.mx_meanv(aacc.base, aacc.stride, C: &val, numericCast(aacc.count))
+			return val
+		}
+	}
+	public static func meanSquare(_ a: Vector) -> Element {
+		return a.withStorageAccess { aacc in
+			var val: Element = .none
+			Element.mx_measqv(aacc.base, aacc.stride, C: &val, numericCast(aacc.count))
+			return val
+		}
+	}
 	public static func maximum(_ a: Vector) -> Element {
 		return a.withStorageAccess { aacc in
 			var val = -Element.infinity
@@ -220,6 +234,8 @@ extension Numerics where Element: AccelerateFloatingPoint {
 
 // MARK: - Vector: Deriving new ones + operators
 extension NVector where Element: AccelerateFloatingPoint {
+	public var mean: Element { return Numerics.mean(self) }
+	public var meanSquare: Element { return Numerics.meanSquare(self) }
 	public var maximum: Element { return Numerics.maximum(self) }
 	public var minimum: Element { return Numerics.minimum(self) }
 	
@@ -398,11 +414,91 @@ extension Numerics where Element: AccelerateFloatingPoint {
 			}
 		}
 	}
+	public static func mean(_ a: Matrix) -> Element {
+		return a.withStorageAccess { aacc in
+			if a.isCompact {
+				var val: Element = .none
+				Element.mx_meanv(aacc.base, 1, C: &val, numericCast(aacc.count.row * aacc.count.column))
+				return val
+			}
+			else {
+				var m: Element = 0.0
+				for i in 0..<aacc.count.row {
+					var lm: Element = 0.0
+					Element.mx_meanv(aacc.base + i*aacc.stride.row, aacc.stride.column, C: &lm, numericCast(aacc.count.column))
+					m += lm
+				}
+				m /= Element(aacc.count.row)
+				return m
+			}
+		}
+	}
+	public static func meanSquare(_ a: Matrix) -> Element {
+		return a.withStorageAccess { aacc in
+			if a.isCompact {
+				var val: Element = .none
+				Element.mx_measqv(aacc.base, 1, C: &val, numericCast(aacc.count.row * aacc.count.column))
+				return val
+			}
+			else {
+				var m: Element = 0.0
+				for i in 0..<aacc.count.row {
+					var lm: Element = 0.0
+					Element.mx_measqv(aacc.base + i*aacc.stride.row, aacc.stride.column, C: &lm, numericCast(aacc.count.column))
+					m += lm
+				}
+				m /= Element(aacc.count.row)
+				return m
+			}
+		}
+	}
+	public static func minimum(_ a: Matrix) -> Element {
+		return a.withStorageAccess { aacc in
+			if a.isCompact {
+				var val: Element = Element.infinity
+				Element.mx_minv(aacc.base, 1, C: &val, numericCast(aacc.count.row * aacc.count.column))
+				return val
+			}
+			else {
+				var m: Element = Element.infinity
+				for i in 0..<aacc.count.row {
+					var lm: Element = Element.infinity
+					Element.mx_minv(aacc.base + i*aacc.stride.row, aacc.stride.column, C: &lm, numericCast(aacc.count.column))
+					m = min(m, lm)
+				}
+				return m
+			}
+		}
+	}
+	public static func maximum(_ a: Matrix) -> Element {
+		return a.withStorageAccess { aacc in
+			if a.isCompact {
+				var val: Element = -Element.infinity
+				Element.mx_maxv(aacc.base, 1, C: &val, numericCast(aacc.count.row * aacc.count.column))
+				return val
+			}
+			else {
+				var m: Element = -Element.infinity
+				for i in 0..<aacc.count.row {
+					var lm: Element = -Element.infinity
+					Element.mx_maxv(aacc.base + i*aacc.stride.row, aacc.stride.column, C: &lm, numericCast(aacc.count.column))
+					m = max(m, lm)
+				}
+				return m
+			}
+		}
+	}
 }
 
 
 // MARK: - Matrix: Deriving new ones + operators
 extension NMatrix where Element: AccelerateFloatingPoint {
+	public var mean: Element { return Numerics.mean(self) }
+	public var meanSquare: Element { return Numerics.meanSquare(self) }
+	public var maximum: Element { return Numerics.maximum(self) }
+	public var minimum: Element { return Numerics.minimum(self) }
+	
+	
 	public func transposed() -> Matrix {
 		let result = Matrix(rows: columns, columns: rows)
 		Numerics.transpose(self, result)

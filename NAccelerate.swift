@@ -62,7 +62,9 @@ public protocol AccelerateFloatingPoint: NValue, NumericsFloatingPoint {
 	static func mx_vadd(_ A: PointerType, _ IA: vDSP_Stride, _ B: PointerType, _ IB: vDSP_Stride, _ C: MutablePointerType, _ IC: vDSP_Stride, _ N: vDSP_Length)
 	static func mx_vsub(_ A: PointerType, _ IA: vDSP_Stride, _ B: PointerType, _ IB: vDSP_Stride, _ C: MutablePointerType, _ IC: vDSP_Stride, _ N: vDSP_Length)
 	
-	// min/max
+	// Reduction & min/max
+	static func mx_measqv(_ A: PointerType, _ IA: vDSP_Stride, C: inout Element, _ N: vDSP_Length)
+	static func mx_meanv(_ A: PointerType, _ IA: vDSP_Stride, C: inout Element, _ N: vDSP_Length)
 	static func mx_minv(_ A: PointerType, _ IA: vDSP_Stride, C: inout Element, _ N: vDSP_Length)
 	static func mx_maxv(_ A: PointerType, _ IA: vDSP_Stride, C: inout Element, _ N: vDSP_Length)
 	
@@ -127,6 +129,14 @@ extension Double: AccelerateFloatingPoint {
 	public static func mx_vsub(_ A: PointerType, _ IA: vDSP_Stride, _ B: PointerType, _ IB: vDSP_Stride, _ C: MutablePointerType, _ IC: vDSP_Stride, _ N: vDSP_Length) {
 		_performanceCheckStride(IA, IB, IC)
 		vDSP_vsubD(B, IB, A, IA, C, IC, N)
+	}
+	public static func mx_meanv(_ A: PointerType, _ IA: vDSP_Stride, C: inout Element, _ N: vDSP_Length) {
+		_performanceCheckStride(IA)
+		vDSP_meanvD(A, IA, &C, N)
+	}
+	public static func mx_measqv(_ A: PointerType, _ IA: vDSP_Stride, C: inout Element, _ N: vDSP_Length) {
+		_performanceCheckStride(IA)
+		vDSP_measqvD(A, IA, &C, N)
 	}
 	public static func mx_minv(_ A: PointerType, _ IA: vDSP_Stride, C: inout Element, _ N: vDSP_Length) {
 		_performanceCheckStride(IA)
@@ -198,6 +208,14 @@ extension Float: AccelerateFloatingPoint {
 	public static func mx_vsub(_ A: PointerType, _ IA: vDSP_Stride, _ B: PointerType, _ IB: vDSP_Stride, _ C: MutablePointerType, _ IC: vDSP_Stride, _ N: vDSP_Length) {
 		_performanceCheckStride(IA, IB, IC)
 		vDSP_vsub(B, IB, A, IA, C, IC, N)
+	}
+	public static func mx_meanv(_ A: PointerType, _ IA: vDSP_Stride, C: inout Element, _ N: vDSP_Length) {
+		_performanceCheckStride(IA)
+		vDSP_meanv(A, IA, &C, N)
+	}
+	public static func mx_measqv(_ A: PointerType, _ IA: vDSP_Stride, C: inout Element, _ N: vDSP_Length) {
+		_performanceCheckStride(IA)
+		vDSP_measqv(A, IA, &C, N)
 	}
 	public static func mx_minv(_ A: PointerType, _ IA: vDSP_Stride, C: inout Element, _ N: vDSP_Length) {
 		_performanceCheckStride(IA)

@@ -35,8 +35,6 @@ public class NMatrix<Element: NValue> {
 	private let layout: NMatrixLayout
 	private let slices: (rows: NResolvedSlice, columns: NResolvedSlice)
 	
-	public var rawData : Data { return storage.rawData	}
-	
 	public var rows: Int { return slices.rows.rcount }
 	public var columns: Int { return slices.columns.rcount }
 	
@@ -44,6 +42,13 @@ public class NMatrix<Element: NValue> {
 		storage = s
 		layout = l
 		slices = sl
+	}
+	
+	public convenience init(compactData: Data, rows: Int, columns: Int) {
+		precondition(compactData.count == rows * columns * MemoryLayout<Element>.stride)
+		
+		self.init(rows: rows, columns: columns)
+		_setFromCompactData(compactData)
 	}
 	
 	public convenience init(repeating value: Element = .none, rows: Int, columns: Int) {
@@ -71,6 +76,37 @@ public class NMatrix<Element: NValue> {
 		let result = NMatrix(rows: rows, columns: columns)
 		result.set(from: self)
 		return result
+	}
+	
+	public var rawData : Data { return storage.rawData	}
+	public var compactData : Data { // row major, no empty room between elements
+		var data = Data(count: rows * columns * MemoryLayout<Element>.stride)
+		
+		self.withStorageAccess { aacc in
+			data.withUnsafeMutableBytes { (pointer: UnsafeMutablePointer<Element>) in
+				var it = self._storageIterator()
+				var mit = Storage.QuadraticIterator(layout: .default(columns: columns), slices: (.default(count: rows), .default(count: columns)))
+				
+				while let pos = it.next(), let mpos = mit.next() {
+					pointer[mpos] = aacc.base[pos]
+				}
+			}
+		}
+		return data
+	}
+	private func _setFromCompactData(_ data: Data) {
+		precondition(data.count == rows * columns * MemoryLayout<Element>.stride)
+		
+		self.withStorageAccess { aacc in
+			data.withUnsafeBytes { (pointer: UnsafePointer<Element>) in
+				var it = self._storageIterator()
+				var mit = Storage.QuadraticIterator(layout: .default(columns: columns), slices: (.default(count: rows), .default(count: columns)))
+				
+				while let pos = it.next(), let mpos = mit.next() {
+					aacc.base[pos] = pointer[mpos]
+				}
+			}
+		}
 	}
 	
 	// quickie to allocate result with same size as self.
