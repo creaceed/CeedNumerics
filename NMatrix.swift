@@ -163,19 +163,22 @@ public class NMatrix<Element: NValue> {
 		return it
 	}
 	
-	private func _storageLocation(row: Int, columns: Int) -> Int {
+	private func _storageLocation(row: Int, column: Int) -> Int {
+		assert(row >= 0 && row < rows)
+		assert(column >= 0 && column < columns)
+		
 		let r = slices.rows.position(at: row)
-		let c = slices.columns.position(at: columns)
+		let c = slices.columns.position(at: column)
 		let loc = layout.location(row: r, column: c)
 		return loc
 	}
 	// Access one element
 	public subscript(row: Int, column: Int) -> Element {
 		get {
-			return storage[_storageLocation(row: row, columns: column)]
+			return storage[_storageLocation(row: row, column: column)]
 		}
 		set {
-			storage[_storageLocation(row: row, columns: column)] = newValue
+			storage[_storageLocation(row: row, column: column)] = newValue
 		}
 	}
 	
@@ -191,7 +194,7 @@ public class NMatrix<Element: NValue> {
 	public typealias QuadraticStorageAccess = (base: UnsafeMutablePointer<Element>, stride: (row: Int, column: Int), count: (row: Int, column: Int))
 	public func withStorageAccess<Result>(_ block: (_ access: QuadraticStorageAccess) throws -> Result) rethrows -> Result {
 		return try storage.withUnsafeAccess { saccess in
-			let base = saccess.base + _storageLocation(row: 0, columns: 0)
+			let base = saccess.base + _storageLocation(row: 0, column: 0)
 			let access: QuadraticStorageAccess = (base, (slices.rows.rstep * layout.stride.row, slices.columns.rstep * layout.stride.column), (slices.rows.rcount, slices.columns.rcount))
 			return try block(access)
 		}
