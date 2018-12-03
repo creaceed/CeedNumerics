@@ -130,10 +130,14 @@ public struct NResolvedSlice: NSliceExpression {
 	public let rcount: Int
 	public let rstep: Int // non zero. Can be negative.
 	public var rlast : Int { return rstart + (rcount - 1) * rstep }
+	public var rend : Int { return rstart + rcount * rstep }
 	
 	public var start: Int? { return rstart }
-	public var end: Int? { return rstart + rstep * rcount }
+	public var end: Int? { return rend }
 	public var step: Int? { return rstep }
+	
+	// can call stride.enumerated() if need source indexes
+	public var stride: StrideTo<Int> { return Swift.stride(from: rstart, to: rend, by: rstep) }
 	
 	public init(start: Int, count: Int, step: Int) {
 		rstart = start
@@ -150,6 +154,9 @@ public struct NResolvedSlice: NSliceExpression {
 	public func flatten(within parent: NResolvedSlice) -> NResolvedSlice {
 		return NResolvedSlice(start: parent.position(at: rstart), count: rcount, step: parent.rstep * rstep)
 	}
+	
+	
+	
 }
 
 extension CountableRange: NSliceExpression where Bound == Int {

@@ -127,6 +127,17 @@ class CeedNumerics_tests_mac: XCTestCase {
 		XCTAssert(equals(Numerics.polyval(poly, x: xval), expected_polyval))
 	}
 	
+	func testMisc() {
+		let v1 = NVectord([1.0, 2.0, 3.0])
+		let v2 = NVectord([4.0, 5.0, 6.0])
+		
+		// Test Vector.set()
+		v1.set(from: v2)
+		XCTAssert(equals(v1, v2))
+		
+		
+	}
+	
 	func testBasicTensors() {
 //		let tensorA = Tensord(dimensions: [3,3,2], repeatedValue: 1.0)
 //		let slice = tensorA[1..<3, 1..<3, 0..<1]

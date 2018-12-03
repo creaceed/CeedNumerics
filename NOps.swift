@@ -32,8 +32,8 @@ extension Numerics where Element: AccelerateFloatingPoint {
 		precondition(count == output.size)
 		precondition(count >= 2)
 		
-		output.withStorageAccess { oaccess in
-			Element.mx_vramp(start, stop/Element(count-1), oaccess.base, numericCast(oaccess.stride), numericCast(count))
+		withStorageAccess(output) { oaccess in
+			Element.mx_vramp(start, stop/Element(count-1), oaccess.base, numericCast(oaccess.stride), numericCast(oaccess.count))
 		}
 	}
 	public static func linspace(start: Element, stop: Element, count: Int) -> Vector {
@@ -88,13 +88,9 @@ extension Numerics where Element: AccelerateFloatingPoint {
 		precondition(M >= kernel.size)
 		precondition(O == M - K + 1)
 		
-		input.withStorageAccess { iaccess in
-			kernel.withStorageAccess { kaccess in
-				output.withStorageAccess { oaccess in
-					// TODO: check negative stride is supported for input/output (doc only mentions kernel)
-					Element.mx_conv(iaccess.base, iaccess.stride, kaccess.base, kaccess.stride, oaccess.base, oaccess.stride, numericCast(oaccess.count), numericCast(kaccess.count))
-				}
-			}
+		withStorageAccess(input, kernel, output) { iaccess, kaccess, oaccess in
+			// TODO: check negative stride is supported for input/output (doc only mentions kernel)
+			Element.mx_conv(iaccess.base, iaccess.stride, kaccess.base, kaccess.stride, oaccess.base, oaccess.stride, numericCast(oaccess.count), numericCast(kaccess.count))
 		}
 	}
 	
@@ -113,13 +109,10 @@ extension Numerics where Element: AccelerateFloatingPoint {
 	// Arithmetic
 	public static func scaledAdd(_ a: Vector, _ asp: Element, _ b: Vector, _ bs: Element, _ output: Vector) {
 		precondition(a.size == b.size && a.size == output.size)
-		a.withStorageAccess { aa in
-			b.withStorageAccess { ba in
-				output.withStorageAccess { ca in
-					// TODO: check negative stride is supported for input/output (doc only mentions kernel)
-					Element.mx_vsmsma(aa.base, aa.stride, asp, ba.base, ba.stride, bs, ca.base, ca.stride, numericCast(aa.count))
-				}
-			}
+		
+		withStorageAccess(a, b, output) { aacc, bacc, oacc in
+			// TODO: check negative stride is supported for input/output (doc only mentions kernel)
+			Element.mx_vsmsma(aacc.base, aacc.stride, asp, bacc.base, bacc.stride, bs, oacc.base, oacc.stride, numericCast(aacc.count))
 		}
 	}
 	
@@ -130,10 +123,8 @@ extension Numerics where Element: AccelerateFloatingPoint {
 	
 	public static func multiply(_ a: Element, _ b: Vector, _ result: Vector) {
 		precondition(b.shape == result.shape)
-		b.withStorageAccess { bacc in
-			result.withStorageAccess { racc in
-				Element.mx_vsmul(bacc.base, bacc.stride, a, racc.base, racc.stride, numericCast(racc.count))
-			}
+		withStorageAccess(b, result) { bacc, racc in
+			Element.mx_vsmul(bacc.base, bacc.stride, a, racc.base, racc.stride, numericCast(racc.count))
 		}
 	}
 	public static func multiply(_ a: Element, _ b: Vector) -> Vector { return b._deriving { multiply(a, b, $0) } }
@@ -144,44 +135,30 @@ extension Numerics where Element: AccelerateFloatingPoint {
 	public static func multiply(_ a: Vector, _ b: Vector, _ result: Vector) {
 		precondition(a.size == b.size && b.size == result.size)
 		
-		a.withStorageAccess { aacc in
-			b.withStorageAccess { bacc in
-				result.withStorageAccess { racc in
-					Element.mx_vmul(aacc.base, aacc.stride, bacc.base, bacc.stride, racc.base, racc.stride, numericCast(racc.count))
-				}
-			}
+		withStorageAccess(a, b, result) { aacc, bacc, racc in
+			Element.mx_vmul(aacc.base, aacc.stride, bacc.base, bacc.stride, racc.base, racc.stride, numericCast(racc.count))
 		}
 	}
 	public static func multiply(_ a: Vector, _ b: Vector) -> Vector { return a._deriving { multiply(a, b, $0) } }
 	
 	public static func subtract(_ a: Vector, _ b: Vector, _ result: Vector) {
 		precondition(a.shape == b.shape && a.shape == result.shape)
-		a.withStorageAccess { aacc in
-			b.withStorageAccess { bacc in
-				result.withStorageAccess { racc in
-					Element.mx_vsub(aacc.base, aacc.stride, bacc.base, bacc.stride, racc.base, racc.stride, numericCast(racc.count))
-				}
-			}
+		withStorageAccess(a, b, result) { aacc, bacc, racc in
+			Element.mx_vsub(aacc.base, aacc.stride, bacc.base, bacc.stride, racc.base, racc.stride, numericCast(racc.count))
 		}
 	}
 	public static func subtract(_ a: Vector, _ b: Vector) -> Vector { return a._deriving { subtract(a, b, $0) } }
 	public static func add(_ a: Vector, _ b: Vector, _ result: Vector) {
 		precondition(a.shape == b.shape && a.shape == result.shape)
-		a.withStorageAccess { aacc in
-			b.withStorageAccess { bacc in
-				result.withStorageAccess { racc in
-					Element.mx_vadd(aacc.base, aacc.stride, bacc.base, bacc.stride, racc.base, racc.stride, numericCast(racc.count))
-				}
-			}
+		withStorageAccess(a, b, result) { aacc, bacc, racc in
+			Element.mx_vadd(aacc.base, aacc.stride, bacc.base, bacc.stride, racc.base, racc.stride, numericCast(racc.count))
 		}
 	}
 	public static func add(_ a: Vector, _ b: Vector) -> Vector { return a._deriving { add(a, b, $0) } }
 	public static func add(_ a: Vector, _ b: Element, _ result: Vector) {
 		precondition(a.shape == result.shape)
-		a.withStorageAccess { aacc in
-			result.withStorageAccess { racc in
-				Element.mx_vsadd(aacc.base, aacc.stride, b, racc.base, racc.stride, numericCast(racc.count))
-			}
+		withStorageAccess(a, result) { aacc, racc in
+			Element.mx_vsadd(aacc.base, aacc.stride, b, racc.base, racc.stride, numericCast(racc.count))
 		}
 	}
 	public static func add(_ a: Vector, _ b: Element) -> Vector { return a._deriving { add(a, b, $0) } }
@@ -195,7 +172,7 @@ extension Numerics where Element: AccelerateFloatingPoint {
 			result[1] = result[0] + result[1]
 		}
 		
-		result.withStorageAccess { racc in
+		withStorageAccess(result) { racc in
 			// in-place. OK?
 			Element.mx_vrsum(racc.base, racc.stride, 1.0, racc.base, racc.stride, numericCast(racc.count))
 		}
@@ -203,28 +180,28 @@ extension Numerics where Element: AccelerateFloatingPoint {
 		return result
 	}
 	public static func mean(_ a: Vector) -> Element {
-		return a.withStorageAccess { aacc in
+		return withStorageAccess(a) { aacc in
 			var val: Element = .none
 			Element.mx_meanv(aacc.base, aacc.stride, C: &val, numericCast(aacc.count))
 			return val
 		}
 	}
 	public static func meanSquare(_ a: Vector) -> Element {
-		return a.withStorageAccess { aacc in
+		return withStorageAccess(a) { aacc in
 			var val: Element = .none
 			Element.mx_measqv(aacc.base, aacc.stride, C: &val, numericCast(aacc.count))
 			return val
 		}
 	}
 	public static func maximum(_ a: Vector) -> Element {
-		return a.withStorageAccess { aacc in
+		return withStorageAccess(a) { aacc in
 			var val = -Element.infinity
 			Element.mx_maxv(aacc.base, aacc.stride, C: &val, numericCast(aacc.count))
 			return val
 		}
 	}
 	public static func minimum(_ a: Vector) -> Element {
-		return a.withStorageAccess { aacc in
+		return withStorageAccess(a) { aacc in
 			var val = -Element.infinity
 			Element.mx_minv(aacc.base, aacc.stride, C: &val, numericCast(aacc.count))
 			return val
@@ -352,14 +329,12 @@ extension Numerics where Element: AccelerateFloatingPoint {
 		
 		if a.isCompact && b.isCompact && result.isCompact {
 			a.withStorageAccess { aacc in
-				b.withStorageAccess { bacc in
-					result.withStorageAccess { racc in
-						assert(aacc.stride.column == 1); assert(aacc.stride.row == aacc.count.column)
-						assert(bacc.stride == 1)
-						assert(racc.stride == 1)
-						
-						Element.mx_gemm(order: CblasRowMajor, transA: CblasNoTrans, transB: CblasNoTrans, M: numericCast(a.rows), N: 1, K: numericCast(a.columns), alpha: 1.0, A: aacc.base, lda: numericCast(aacc.stride.row), B: bacc.base, ldb: numericCast(bacc.stride), beta: 0.0, C: racc.base, ldc: numericCast(racc.stride))
-					}
+				withStorageAccess(b, result) { bacc, racc in
+					assert(aacc.stride.column == 1); assert(aacc.stride.row == aacc.count.column)
+					assert(bacc.stride == 1)
+					assert(racc.stride == 1)
+					
+					Element.mx_gemm(order: CblasRowMajor, transA: CblasNoTrans, transB: CblasNoTrans, M: numericCast(a.rows), N: 1, K: numericCast(a.columns), alpha: 1.0, A: aacc.base, lda: numericCast(aacc.stride.row), B: bacc.base, ldb: numericCast(bacc.stride), beta: 0.0, C: racc.base, ldc: numericCast(racc.stride))
 				}
 			}
 		} else {

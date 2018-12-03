@@ -17,13 +17,6 @@ public struct NMatrixLayout {
 	public func location(row rpos: Int, column cpos: Int) -> Int {
 		return offset + stride.row * rpos + stride.column * cpos
 	}
-	
-	public func layout(row: Int) -> NVectorLayout {
-		return NVectorLayout(offset: offset + row * stride.row, stride: stride.column)
-	}
-	public func layout(column: Int) -> NVectorLayout {
-		return NVectorLayout(offset: offset + column * stride.column, stride: stride.row)
-	}
 }
 
 public class NMatrix<Element: NValue> {
@@ -37,6 +30,8 @@ public class NMatrix<Element: NValue> {
 	
 	public var rows: Int { return slices.rows.rcount }
 	public var columns: Int { return slices.columns.rcount }
+	public var rowIndices: Range<Int> { return 0..<rows }
+	public var columnIndices: Range<Int> { return 0..<columns }
 	
 	public init(storage s: Storage, layout l: NMatrixLayout, slices sl: (NResolvedSlice, NResolvedSlice)) {
 		storage = s
@@ -128,7 +123,8 @@ public class NMatrix<Element: NValue> {
 	
 	// Get row/column as vector
 	private func vector(row: Int) -> Vector {
-		return Vector(storage: storage, layout: layout.layout(row: row), slice: slices.columns)
+		let slice = NResolvedSlice(start: _storageLocation(row: row, column: 0), count: columns, step: layout.stride.column * slices.columns.rstep)
+		return Vector(storage: storage, slice: slice)
 	}
 	public subscript(row row: Int) -> Vector {
 		get { return vector(row: row) }
@@ -137,7 +133,8 @@ public class NMatrix<Element: NValue> {
 	}
 	
 	private func vector(column: Int) -> Vector {
-		return Vector(storage: storage, layout: layout.layout(column: column), slice: slices.rows)
+		let slice = NResolvedSlice(start: _storageLocation(row: 0, column: column), count: rows, step: layout.stride.row * slices.rows.rstep)
+		return Vector(storage: storage, slice: slice)
 	}
 	public subscript(column col: Int) -> Vector {
 		get { return vector(column: col) }

@@ -19,22 +19,20 @@ extension Numerics where Element: LinearSolverFloatingPoint {
 		precondition(x.size == result.size)
 		precondition(poly.size > 0)
 		
-		poly.withStorageAccess { pacc in
-			x.withStorageAccess { xacc in
-				result.withStorageAccess { racc in
-					// Note: reverse iteration for poly (vDSP convention)
-					Element.mx_vpoly(pacc.base+pacc.count-1, -pacc.stride, xacc.base, xacc.stride, racc.base, racc.stride, numericCast(x.size), numericCast(poly.size-1))
-				}
-			}
+		withStorageAccess(poly, x, result) { pacc, xacc, racc in
+			// Note: reverse iteration for poly (vDSP convention)
+			Element.mx_vpoly(pacc.base+pacc.last, -pacc.stride, xacc.base, xacc.stride, racc.base, racc.stride, numericCast(xacc.count), numericCast(poly.size-1))
 		}
 	}
 	public static func polyval(_ poly: Vector, x: Element) -> Element {
 		var res: Element = 0.0
 		var xp: Element = 1.0
-		for i in 0..<poly.size {
-			res += poly[i] * xp
+		
+		withValueStride(poly) { p in
+			res += p * xp
 			xp *= x
 		}
+		
 		return res
 	}
 	public static func polyval(_ poly: Vector, x: Vector) -> Vector { return x._deriving { polyval(poly, x: x, result: $0) } }

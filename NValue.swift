@@ -20,6 +20,7 @@ import Foundation
 // Note 1: that the ones deriving new values (ie: v1.convolving(v2)) are instance method on their respective type.
 // Note 2: that namespace struct can be typealiased (just like with numpy: Numerics.convolve() -> nu.convolve() )
 public struct Numerics<Element: NValue> {
+	public typealias Storage = NStorage<Element>
 	public typealias Vector = NVector<Element>
 	public typealias Matrix = NMatrix<Element>
 }
