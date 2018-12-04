@@ -68,8 +68,6 @@ extension Numerics where Element : LinearSolverFloatingPoint {
 		// we do this because LAPACK expects column-major matrices, but ours are row-major.
 //		let a = tA, b = tB
 //		assert(a.columns == b.columns) // = n
-		precondition(tA.isCompact) // no stride
-		precondition(tB.isCompact)
 		
 		assert(tB.columns >= max(tA.rows, tA.columns)) // contraint of DGELS method
 		
@@ -96,9 +94,13 @@ extension Numerics where Element : LinearSolverFloatingPoint {
 		
 		var workspace = [Element](repeating: .none, count: Int(lwork))
 		
-		tA.withStorageAccess { aacc in
-			tB.withStorageAccess { bacc in
-				_ = Element.mx_gels(&trans, &m, &n, &nrhs, aacc.base, &lda, bacc.base, &ldb, &workspace, &lwork, &status)
+		withStorageAccess(tA) { aacc in
+			withStorageAccess(tB) { bacc in
+				if(aacc.compact && bacc.compact) {
+					_ = Element.mx_gels(&trans, &m, &n, &nrhs, aacc.base, &lda, bacc.base, &ldb, &workspace, &lwork, &status)
+				} else {
+					fatalError("not implemented")
+				}
 			}
 		}
 		
@@ -155,7 +157,6 @@ extension Numerics where Element : LinearSolverFloatingPoint {
 		precondition(input.shape == output.shape)
 		precondition(input.rows == input.columns)
 		precondition(input.rows > 1)
-		precondition(input.isCompact && output.isCompact)
 		
 		// output is used as I/O, -> get values from input
 		output.set(from: input)
@@ -168,13 +169,17 @@ extension Numerics where Element : LinearSolverFloatingPoint {
 		var lwork = __CLPK_integer(N*N)
 		var work = [Element](repeating: 0.0, count: Int(lwork))
 
-		try output.withStorageAccess { oacc in
-			var n1 = nc, n2 = nc, n3 = nc
-			// this does the invert in column major (transposed). Since T(X-1) = (TX)-1, that's just fine ;-)
-			_ = Element.mx_getrf(m: &n1, n: &n2, a: oacc.base, lda: &n3, ipiv: &ipiv, info: &info)
-			guard info == 0 else { throw info>0 ? LinearAlgError.lapackSingularMatrix : LinearAlgError.lapackIllegalArgument(function: "getrf", index: numericCast(-info))}
-			_ = Element.mx_getri(n: &n1, a: oacc.base, lda: &n2, ipiv: &ipiv, work: &work, lwork: &lwork, info: &info)
-			guard info == 0 else { throw info>0 ? LinearAlgError.lapackSingularMatrix : LinearAlgError.lapackIllegalArgument(function: "getri", index: numericCast(-info))}
+		try withStorageAccess(output) { oacc in
+			if oacc.compact {
+				var n1 = nc, n2 = nc, n3 = nc
+				// this does the invert in column major (transposed). Since T(X-1) = (TX)-1, that's just fine ;-)
+				_ = Element.mx_getrf(m: &n1, n: &n2, a: oacc.base, lda: &n3, ipiv: &ipiv, info: &info)
+				guard info == 0 else { throw info>0 ? LinearAlgError.lapackSingularMatrix : LinearAlgError.lapackIllegalArgument(function: "getrf", index: numericCast(-info))}
+				_ = Element.mx_getri(n: &n1, a: oacc.base, lda: &n2, ipiv: &ipiv, work: &work, lwork: &lwork, info: &info)
+				guard info == 0 else { throw info>0 ? LinearAlgError.lapackSingularMatrix : LinearAlgError.lapackIllegalArgument(function: "getri", index: numericCast(-info))}
+			} else {
+				fatalError("output must be compact")
+			}
 		}
 	}
 }

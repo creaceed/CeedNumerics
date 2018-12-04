@@ -7,9 +7,10 @@
 
 import Foundation
 
-public class NVector<Element: NValue> {
+public class NVector<Element: NValue> : NStorageAccessible {
 	public typealias Storage = NStorage<Element>
 	public typealias Vector = NVector<Element>
+	public typealias Access = Storage.LinearAccess
 	
 	private let storage: Storage
 	private let slice: NResolvedSlice // addresses storage directly
@@ -79,10 +80,10 @@ public class NVector<Element: NValue> {
 		set { storage[slice.position(at: index)] = newValue }
 	}
 	
-	// Use Numerics.with variants
-	internal func _withStorageAccess<Result>(_ block: (_ access: Storage.LinearAccess) throws -> Result) rethrows -> Result {
+	// Use Numerics.with variants as API
+	public func _withStorageAccess<Result>(_ block: (_ access: Storage.LinearAccess) throws -> Result) rethrows -> Result {
 		return try storage.withUnsafeAccess { saccess in
-			let access = Storage.LinearAccess(base: saccess.base + slice.rstart, step: slice.rstep, count: slice.rcount)
+			let access = Storage.LinearAccess(base: saccess.base + slice.rstart, stride: slice.rstep, count: slice.rcount)
 			return try block(access)
 		}
 	}
@@ -104,7 +105,7 @@ extension NVector {
 	public func set(from: Vector) {
 		precondition(from.slice.rcount == slice.rcount)
 		
-		Numerics.withStorageStride(from, self) { pfrom, pself in
+		Numerics.withAddresses(from, self) { pfrom, pself in
 			pself.pointee = pfrom.pointee
 		}
 	}
@@ -117,10 +118,10 @@ extension NVector: NDimensionalType {
 		get { assert(index.count == 1); return self[index[0]] }
 		set { assert(index.count == 1); self[index[0]] = newValue }
 	}
-	public var isCompact: Bool { return isCompact(dimension: 0) }
-	public func isCompact(dimension: Int) -> Bool {
-		assert(dimension == 0)
-		return slice.rstep == 1
-	}
+//	public var isCompact: Bool { return isCompact(dimension: 0) }
+//	public func isCompact(dimension: Int) -> Bool {
+//		assert(dimension == 0)
+//		return slice.rstep == 1
+//	}
 }
 

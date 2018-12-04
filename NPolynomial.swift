@@ -28,7 +28,7 @@ extension Numerics where Element: LinearSolverFloatingPoint {
 		var res: Element = 0.0
 		var xp: Element = 1.0
 		
-		withValueStride(poly) { p in
+		withValues(poly) { p in
 			res += p * xp
 			xp *= x
 		}

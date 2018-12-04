@@ -274,48 +274,55 @@ extension Numerics where Element: AccelerateFloatingPoint {
 	public static func multiply(_ a: Matrix, _ b: Element, _ result: Matrix) {
 		precondition(a.shape == result.shape)
 		
-		a.withStorageAccess { aacc in
-			result.withStorageAccess { racc in
-				if a.isCompact && result.isCompact {
-					assert(aacc.stride.column == 1); assert(aacc.stride.row == aacc.count.column)
-					assert(racc.stride.column == 1); assert(racc.stride.row == racc.count.column)
-					
-					Element.mx_vsmul(aacc.base, 1, b, racc.base, 1, numericCast(aacc.count.row * aacc.count.column))
-					
-				} else {
-					var lit = a._storageIterator()
-					var rit = result._storageIterator()
-					
-					while let pos = lit.next(), let rpos = rit.next() {
-						racc.base[rpos] = aacc.base[pos] * b
-					}
-				}
-			}
+		// New implementation, try it!
+		withLinearizedAccesses(a, result) { alin, rlin in
+			// possibly invoked multiple types
+			Element.mx_vsmul(alin.base, 1, b, rlin.base, 1, numericCast(alin.count))
 		}
+		
+//
+//		withStorageAccess(a) { aacc in
+//			withStorageAccess(result) { racc in
+//				if aacc.compact && racc.compact {
+//					assert(aacc.stride.column == 1); assert(aacc.stride.row == aacc.count.column)
+//					assert(racc.stride.column == 1); assert(racc.stride.row == racc.count.column)
+//
+//					Element.mx_vsmul(aacc.base, 1, b, racc.base, 1, numericCast(aacc.count.row * aacc.count.column))
+//
+//				} else {
+//					var lit = a._storageIterator()
+//					var rit = result._storageIterator()
+//
+//					while let pos = lit.next(), let rpos = rit.next() {
+//						racc.base[rpos] = aacc.base[pos] * b
+//					}
+//				}
+//			}
+//		}
 	}
 	// swap + deriving
 	public static func multiply(_ a: Element, _ b: Matrix, _ result: Matrix) { multiply(b, a, result) }
 	public static func multiply(_ a: Matrix, _ b: Element) -> Matrix { return a._deriving { multiply(a, b, $0) } }
 	public static func multiply(_ a: Element, _ b: Matrix) -> Matrix { return multiply(b, a) }
 	
-	
 	public static func multiply(_ a: Matrix, _ b: Matrix, _ result: Matrix) {
 		precondition(a.columns == b.rows)
 		
-		if a.isCompact && b.isCompact && result.isCompact {
-			a.withStorageAccess { aacc in
-				b.withStorageAccess { bacc in
-					result.withStorageAccess { racc in
+		withStorageAccess(a) { aacc in
+			withStorageAccess(b) { bacc in
+				withStorageAccess(result) { racc in
+					if aacc.compact && bacc.compact && racc.compact {
+						
 						assert(aacc.stride.column == 1); assert(aacc.stride.row == aacc.count.column)
 						assert(bacc.stride.column == 1); assert(bacc.stride.row == bacc.count.column)
 						assert(racc.stride.column == 1); assert(racc.stride.row == racc.count.column)
 						
 						Element.mx_gemm(order: CblasRowMajor, transA: CblasNoTrans, transB: CblasNoTrans, M: numericCast(a.rows), N: numericCast(b.columns), K: numericCast(a.columns), alpha: 1.0, A: aacc.base, lda: numericCast(aacc.stride.row), B: bacc.base, ldb: numericCast(bacc.stride.row), beta: 0.0, C: racc.base, ldc: numericCast(racc.stride.row))
+					} else {
+						fatalError("not implemented")
 					}
 				}
 			}
-		} else {
-			fatalError("not implemented")
 		}
 	}
 	public static func multiply(_ a: Matrix, _ b: Matrix) -> Matrix {
@@ -327,18 +334,18 @@ extension Numerics where Element: AccelerateFloatingPoint {
 	public static func multiply(_ a: Matrix, _ b: Vector, _ result: Vector) {
 		precondition(a.columns == b.size)
 		
-		if a.isCompact && b.isCompact && result.isCompact {
-			a.withStorageAccess { aacc in
-				withStorageAccess(b, result) { bacc, racc in
+		withStorageAccess(a) { aacc in
+			withStorageAccess(b, result) { bacc, racc in
+				if aacc.compact && bacc.compact && racc.compact {
 					assert(aacc.stride.column == 1); assert(aacc.stride.row == aacc.count.column)
 					assert(bacc.stride == 1)
 					assert(racc.stride == 1)
 					
 					Element.mx_gemm(order: CblasRowMajor, transA: CblasNoTrans, transB: CblasNoTrans, M: numericCast(a.rows), N: 1, K: numericCast(a.columns), alpha: 1.0, A: aacc.base, lda: numericCast(aacc.stride.row), B: bacc.base, ldb: numericCast(bacc.stride), beta: 0.0, C: racc.base, ldc: numericCast(racc.stride))
+				} else {
+					fatalError("not implemented")
 				}
 			}
-		} else {
-			fatalError("not implemented")
 		}
 	}
 	public static func multiply(_ a: Matrix, _ b: Vector) -> Vector {
@@ -350,17 +357,18 @@ extension Numerics where Element: AccelerateFloatingPoint {
 	public static func divide(_ a: Matrix, _ b: Matrix, _ result: Matrix) {
 		precondition(a.shape == b.shape && a.shape == result.shape)
 		
-		if a.isCompact && b.isCompact && result.isCompact {
-			a.withStorageAccess { aacc in
-				b.withStorageAccess { bacc in
-					result.withStorageAccess { racc in
+		withStorageAccess(a) { aacc in
+			withStorageAccess(b) { bacc in
+				withStorageAccess(result) { racc in
+					if aacc.compact && bacc.compact && racc.compact {
+						
 						Element.mx_vdiv(aacc.base, 1, bacc.base, 1, racc.base, 1, numericCast(a.rows * a.columns))
-//						print("\(aacc.base)")
+						//						print("\(aacc.base)")
+					} else {
+						fatalError("not implemented")
 					}
 				}
 			}
-		} else {
-			fatalError("not implemented")
 		}
 	}
 	public static func divide(_ a: Matrix, _ b: Matrix) -> Matrix { return a._deriving { divide(a, b, $0) } }
@@ -371,8 +379,8 @@ extension Numerics where Element: AccelerateFloatingPoint {
 		assert(output.columns == src.rows)
 		
 		if src.isCompact && output.isCompact {
-			src.withStorageAccess { sacc in
-				output.withStorageAccess { oacc in
+			withStorageAccess(src) { sacc in
+				withStorageAccess(output) { oacc in
 					assert(sacc.stride.column == 1 && sacc.stride.row == sacc.count.column)
 					assert(oacc.stride.column == 1 && oacc.stride.row == oacc.count.column)
 					
@@ -390,8 +398,8 @@ extension Numerics where Element: AccelerateFloatingPoint {
 		}
 	}
 	public static func mean(_ a: Matrix) -> Element {
-		return a.withStorageAccess { aacc in
-			if a.isCompact {
+		return withStorageAccess(a) { aacc in
+			if aacc.compact {
 				var val: Element = .none
 				Element.mx_meanv(aacc.base, 1, C: &val, numericCast(aacc.count.row * aacc.count.column))
 				return val
@@ -409,8 +417,8 @@ extension Numerics where Element: AccelerateFloatingPoint {
 		}
 	}
 	public static func meanSquare(_ a: Matrix) -> Element {
-		return a.withStorageAccess { aacc in
-			if a.isCompact {
+		return withStorageAccess(a) { aacc in
+			if aacc.compact {
 				var val: Element = .none
 				Element.mx_measqv(aacc.base, 1, C: &val, numericCast(aacc.count.row * aacc.count.column))
 				return val
@@ -428,8 +436,8 @@ extension Numerics where Element: AccelerateFloatingPoint {
 		}
 	}
 	public static func minimum(_ a: Matrix) -> Element {
-		return a.withStorageAccess { aacc in
-			if a.isCompact {
+		return withStorageAccess(a) { aacc in
+			if aacc.compact {
 				var val: Element = Element.infinity
 				Element.mx_minv(aacc.base, 1, C: &val, numericCast(aacc.count.row * aacc.count.column))
 				return val
@@ -446,8 +454,8 @@ extension Numerics where Element: AccelerateFloatingPoint {
 		}
 	}
 	public static func maximum(_ a: Matrix) -> Element {
-		return a.withStorageAccess { aacc in
-			if a.isCompact {
+		return withStorageAccess(a) { aacc in
+			if aacc.compact {
 				var val: Element = -Element.infinity
 				Element.mx_maxv(aacc.base, 1, C: &val, numericCast(aacc.count.row * aacc.count.column))
 				return val

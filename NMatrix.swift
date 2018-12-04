@@ -7,38 +7,30 @@
 
 import Foundation
 
-public struct NMatrixLayout {
-	public let offset: Int	// gives element 0 (with identity slice)
-	public let stride: (row: Int, column: Int) // across (row, column), typically (N, 1)
-	
-	public static func `default`(columns: Int) -> NMatrixLayout {
-		return NMatrixLayout(offset: 0, stride: (columns, 1))
-	}
-	public func location(row rpos: Int, column cpos: Int) -> Int {
-		return offset + stride.row * rpos + stride.column * cpos
-	}
-}
-
-public class NMatrix<Element: NValue> {
+public class NMatrix<Element: NValue> : NStorageAccessible {
 	public typealias Storage = NStorage<Element>
 	public typealias Vector = NVector<Element>
 	public typealias Matrix = NMatrix<Element>
+	public typealias Access = Storage.QuadraticAccess
 	
 	private let storage: Storage
-	private let layout: NMatrixLayout
-	private let slices: (rows: NResolvedSlice, columns: NResolvedSlice)
+	// orthogonal - slices.rows does not account any column offset (which is entirely expressed through slices.column)
+	// accessing memory requires both slices to be evaluated (and added).
+	// Note: slice.position(_,_) can be used as storage[_] subscript. However, when using storage access (QuadraticAccess),
+	// use its own slice position (access.slice.position) to address its .base pointer, as it removes offset
+	private let slice: NResolvedQuadraticSlice
 	
-	public var rows: Int { return slices.rows.rcount }
-	public var columns: Int { return slices.columns.rcount }
-	public var rowIndices: Range<Int> { return 0..<rows }
-	public var columnIndices: Range<Int> { return 0..<columns }
+	public var rows: Int { return slice.row.rcount }
+	public var columns: Int { return slice.column.rcount }
+	public var indices: NQuadraticIndexRange { return NQuadraticIndexRange(rows: rows, columns: columns) }
 	
-	public init(storage s: Storage, layout l: NMatrixLayout, slices sl: (NResolvedSlice, NResolvedSlice)) {
+	public init(storage s: Storage, slice sl: NResolvedQuadraticSlice) {
 		storage = s
-		layout = l
-		slices = sl
+		slice = sl
 	}
-	
+	public convenience init(storage s: Storage, slices sl: (NResolvedSlice, NResolvedSlice)) {
+		self.init(storage: s, slice: NResolvedQuadraticSlice(row: sl.0, column: sl.1))
+	}
 	public convenience init(compactData: Data, rows: Int, columns: Int) {
 		precondition(compactData.count == rows * columns * MemoryLayout<Element>.stride)
 		
@@ -48,8 +40,7 @@ public class NMatrix<Element: NValue> {
 	
 	public convenience init(repeating value: Element = .none, rows: Int, columns: Int) {
 		let storage = Storage(allocatedCount: rows * columns, value: value)
-		self.init(storage: storage, layout: .default(columns: columns), slices: (.default(count: rows),
-																				 .default(count: columns)))
+		self.init(storage: storage, slice: .default(rows: rows, columns: columns))
 	}
 	
 	public convenience init(_ values: [[Element]]) {
@@ -77,12 +68,10 @@ public class NMatrix<Element: NValue> {
 	public var compactData : Data { // row major, no empty room between elements
 		var data = Data(count: rows * columns * MemoryLayout<Element>.stride)
 		
-		self.withStorageAccess { aacc in
+		Numerics.withStorageAccess(self) { aacc in
 			data.withUnsafeMutableBytes { (pointer: UnsafeMutablePointer<Element>) in
-				var it = self._storageIterator()
-				var mit = Storage.QuadraticIterator(layout: .default(columns: columns), slices: (.default(count: rows), .default(count: columns)))
-				
-				while let pos = it.next(), let mpos = mit.next() {
+				let memslice = NResolvedQuadraticSlice.default(rows: rows, columns: columns)
+				for (pos, mpos) in zip(aacc.slice, memslice) {
 					pointer[mpos] = aacc.base[pos]
 				}
 			}
@@ -92,12 +81,10 @@ public class NMatrix<Element: NValue> {
 	private func _setFromCompactData(_ data: Data) {
 		precondition(data.count == rows * columns * MemoryLayout<Element>.stride)
 		
-		self.withStorageAccess { aacc in
+		Numerics.withStorageAccess(self) { aacc in
 			data.withUnsafeBytes { (pointer: UnsafePointer<Element>) in
-				var it = self._storageIterator()
-				var mit = Storage.QuadraticIterator(layout: .default(columns: columns), slices: (.default(count: rows), .default(count: columns)))
-				
-				while let pos = it.next(), let mpos = mit.next() {
+				let memslice = NResolvedQuadraticSlice.default(rows: rows, columns: columns)
+				for (pos, mpos) in zip(aacc.slice, memslice) {
 					aacc.base[pos] = pointer[mpos]
 				}
 			}
@@ -112,19 +99,16 @@ public class NMatrix<Element: NValue> {
 	}
 	
 	public func set(from: Matrix) {
-		var it = NStorage<Element>.QuadraticIterator(layout: from.layout, slices: from.slices)
-		var rit = NStorage<Element>.QuadraticIterator(layout: layout, slices: slices)
-		
-		// could be faster
-		while let pos = it.next(), let rpos = rit.next() {
-			storage[rpos] = from.storage[pos]
+		// TODO: could be faster (storage)
+		for (pos, rpos) in zip(slice, from.slice) {
+			storage[pos] = from.storage[rpos]
 		}
 	}
 	
 	// Get row/column as vector
 	private func vector(row: Int) -> Vector {
-		let slice = NResolvedSlice(start: _storageLocation(row: row, column: 0), count: columns, step: layout.stride.column * slices.columns.rstep)
-		return Vector(storage: storage, slice: slice)
+		let rslice = NResolvedSlice(start: slice.position(row, 0), count: columns, step: slice.column.rstep)
+		return Vector(storage: storage, slice: rslice)
 	}
 	public subscript(row row: Int) -> Vector {
 		get { return vector(row: row) }
@@ -133,66 +117,39 @@ public class NMatrix<Element: NValue> {
 	}
 	
 	private func vector(column: Int) -> Vector {
-		let slice = NResolvedSlice(start: _storageLocation(row: 0, column: column), count: rows, step: layout.stride.row * slices.rows.rstep)
-		return Vector(storage: storage, slice: slice)
+		let cslice = NResolvedSlice(start: slice.position(0, column), count: rows, step: slice.row.rstep)
+		return Vector(storage: storage, slice: cslice)
 	}
 	public subscript(column col: Int) -> Vector {
 		get { return vector(column: col) }
 		set { vector(column: col).set(from: newValue) }
 	}
 	// Get submatrix
-//	public subscript<S: NSliceExpression>(_ rowSlice: S, _ colSlice: S) -> Matrix {
-//		let rslice = rowSlice.resolve(within: slices.rows)
-//		let cslice = colSlice.resolve(within: slices.columns)
-//		
-//		return Matrix(storage: storage, layout: layout, slices: (rslice, cslice))
-//	}
-	
 	public subscript(_ rowSlice: NSliceExpression, _ colSlice: NSliceExpression) -> Matrix {
-		let rslice = rowSlice.resolve(within: slices.rows)
-		let cslice = colSlice.resolve(within: slices.columns)
+		let rslice = rowSlice.resolve(within: slice.row)
+		let cslice = colSlice.resolve(within: slice.column)
 		
-		return Matrix(storage: storage, layout: layout, slices: (rslice, cslice))
+		return Matrix(storage: storage, slices: (rslice, cslice))
 	}
 	
-	internal func _storageIterator() -> NStorage<Element>.QuadraticIterator {
-		let it = NStorage<Element>.QuadraticIterator(layout: layout, slices: slices)
-		return it
-	}
-	
-	private func _storageLocation(row: Int, column: Int) -> Int {
-		assert(row >= 0 && row < rows)
-		assert(column >= 0 && column < columns)
-		
-		let r = slices.rows.position(at: row)
-		let c = slices.columns.position(at: column)
-		let loc = layout.location(row: r, column: c)
-		return loc
-	}
 	// Access one element
 	public subscript(row: Int, column: Int) -> Element {
-		get {
-			return storage[_storageLocation(row: row, column: column)]
-		}
-		set {
-			storage[_storageLocation(row: row, column: column)] = newValue
-		}
+		get { return storage[slice.position(row, column)] }
+		set { storage[slice.position(row, column)] = newValue }
 	}
 	
 	// Access
 	public func set(_ value: Element) {
-		var it = _storageIterator()
-		while let pos = it.next() {
+		for pos in slice {
 			storage[pos] = value
 		}
 	}
 	
-	// Storage access
-	public typealias QuadraticStorageAccess = (base: UnsafeMutablePointer<Element>, stride: (row: Int, column: Int), count: (row: Int, column: Int))
-	public func withStorageAccess<Result>(_ block: (_ access: QuadraticStorageAccess) throws -> Result) rethrows -> Result {
+	// Entry point. Use Numerics.with variants as API
+	public func _withStorageAccess<Result>(_ block: (_ access: Storage.QuadraticAccess) throws -> Result) rethrows -> Result {
 		return try storage.withUnsafeAccess { saccess in
-			let base = saccess.base + _storageLocation(row: 0, column: 0)
-			let access: QuadraticStorageAccess = (base, (slices.rows.rstep * layout.stride.row, slices.columns.rstep * layout.stride.column), (slices.rows.rcount, slices.columns.rcount))
+			let base = saccess.base + slice.position(0, 0)
+			let access = Storage.QuadraticAccess(base: base, stride: (slice.row.rstep, slice.column.rstep), count: (slice.row.rcount, slice.column.rcount))
 			return try block(access)
 		}
 	}
@@ -202,11 +159,8 @@ extension NMatrix where Element: SignedNumeric, Element.Magnitude == Element {
 	public func isEqual(to rhs: NMatrix, tolerance: Element) -> Bool {
 		precondition(rhs.shape == shape)
 		
-		var lit = self._storageIterator()
-		var rit = rhs._storageIterator()
-		
-		// TODO: could be faster
-		while let pos = lit.next(), let rpos = rit.next() {
+		// TODO: could be faster (storage)
+		for (pos, rpos) in zip(slice, rhs.slice) {
 			if abs(storage[rpos] - rhs.storage[pos]) > tolerance { return false }
 		}
 		
@@ -226,8 +180,8 @@ extension NMatrix: NDimensionalType {
 	public func isCompact(dimension: Int) -> Bool {
 		assert(dimension == 0 || dimension == 1)
 		switch dimension {
-		case 0: return abs(layout.stride.column * slices.columns.rstep) == 1
-		case 1: return isCompact(dimension: 0) && abs(layout.stride.row * slices.rows.rstep) == columns
+		case 0: return abs(slice.column.rstep) == 1
+		case 1: return isCompact(dimension: 0) && abs(slice.row.rstep) == columns
 		default:
 			assert(false)
 			return false

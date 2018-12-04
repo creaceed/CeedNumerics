@@ -18,7 +18,7 @@ public protocol NDimensionalType: CustomStringConvertible {
 	// No gap between elements (useful for enabling Accelerate methods that have that requirement).
 	// For a tensor of dimension 3:
 	//		non compact dimension i implies that dimensions i+n are non compact as well.
-	func isCompact(dimension: Int) -> Bool
+	//func isCompact(dimension: Int) -> Bool
 }
 
 extension NDimensionalType {
