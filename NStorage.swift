@@ -120,7 +120,7 @@ public extension NStorage {
 			count = c
 		}
 		
-		public func linearized(coalesce: Bool) -> AnySequence<Storage.LinearAccess> {
+		public func linearized(coalesce: Bool) -> AnySequence<LinearAccess> {
 			return AnySequence(CollectionOfOne(self))
 		}
 	}

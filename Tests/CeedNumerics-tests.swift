@@ -109,6 +109,9 @@ class CeedNumerics_tests_mac: XCTestCase {
 		let median3 = Numerics.median(input: vec, kernel: 3)
 		let median3res = NVectord([1.0, 1.5, 2.0, 1.5, 1.6, 1.6, 1.7])
 		
+//		print("indices: ")
+//		for i in mat.indices { print("\(i)") }
+		
 //		let padded = vec.padding(before: 5, after: 3)
 		
 //		print("median K=3: \n\(median3)")
@@ -148,11 +151,42 @@ class CeedNumerics_tests_mac: XCTestCase {
 //		print("slice: \n\(slice)")
 	}
 	
-	func testPerformanceExample() {
-		// This is an example of a performance test case.
-		self.measure {
-			// Put the code you want to measure the time of here.
-		}
-	}
-	
+//	func testPerformanceSliceLoop() {
+//		// This is an example of a performance test case.
+//		self.measure {
+//			// Put the code you want to measure the time of here.
+//			let indices = NResolvedQuadraticSlice(row: NResolvedSlice(start: 0, count: 1000, step: 1000),
+//												  column: NResolvedSlice(start: 0, count: 1000, step: 1))
+//			var sum = 0
+//			for i in indices {
+//				sum += i
+//			}
+//			print("sum= \(sum)")
+//		}
+//	}
+//	func testPerformance1Loop() {
+//		// This is an example of a performance test case.
+//		self.measure {
+//			// Put the code you want to measure the time of here.
+//			let indices = NQuadraticIndexRange(rows: 1000, columns: 1000)
+//			var sum = 0
+//			for i in indices {
+//				sum += i.0+i.1
+//			}
+//			print("sum= \(sum)")
+//		}
+//	}
+//	func testPerformance2Loops() {
+//		// This is an example of a performance test case.
+//		self.measure {
+//			// Put the code you want to measure the time of here.
+//			var sum = 0
+//			for i in 0..<1000 {
+//				for j in 0..<1000 {
+//					sum += i+j
+//				}
+//			}
+//			print("sum= \(sum)")
+//		}
+//	}
 }

@@ -174,7 +174,7 @@ extension NResolvedSlice: Sequence {
 	}
 }
 
-public struct NResolvedQuadraticSlice/*: Sequence*/ {
+public struct NResolvedQuadraticSlice {
 	public let row, column: NResolvedSlice
 	
 	public init(row r: NResolvedSlice, column c: NResolvedSlice) {
@@ -189,15 +189,12 @@ public struct NResolvedQuadraticSlice/*: Sequence*/ {
 	public func position(_ ar: Int, _ ac: Int) -> Int {
 		return row.position(at: ar) + column.position(at: ac)
 	}
-//	public func makeIterator() -> NResolvedQuadraticSlice.Iterator {
-//
-//	}
 }
 
 extension NResolvedQuadraticSlice: Sequence {
 	public typealias Element = Int
 	public typealias Iterator =  NQuadraticSliceIterator
-	
+
 	public func makeIterator() -> NQuadraticSliceIterator {
 		return NQuadraticSliceIterator(slice: self)
 	}
@@ -210,31 +207,29 @@ public struct NQuadraticSliceIterator: IteratorProtocol {
 	// internal state
 	private var current: (row: Int, column: Int)
 	private var done: Bool = false
-	
+
 	public init(slice: NResolvedQuadraticSlice) {
 		assert((slice.row.rend - slice.row.rstart) % slice.row.rstep == 0) // so that we can do exact comparison
 		assert((slice.column.rend - slice.column.rstart) % slice.column.rstep == 0)
 		assert(abs(slice.row.rstep) > 0)
 		assert(abs(slice.column.rstep) > 0)
-		
+
 		start = (slice.row.rstart, slice.column.rstart)
 		step = (slice.row.rstep, slice.column.rstep)
 		end = (slice.row.rend, slice.column.rend)
 		current = start
 		done = (start == end)
 	}
-	
+
 	public mutating func next() -> Int? {
 		guard !done else { return nil }
-		
+
 		let loc = (current.row, current.column)
 		current.column += step.column
 		if current.column == end.column {
 			current.column = start.column
 			current.row += step.row
-			if current.row == end.row {
-				done = true
-			}
+			done = (current.row == end.row)
 		}
 		return loc.0 + loc.1
 	}
@@ -252,6 +247,9 @@ public struct NQuadraticIndexRange: Sequence {
 	public func makeIterator() -> NQuadraticIndexIterator {
 		return NQuadraticIndexIterator(start: (0,0), step: (1,1), end: (rows, columns))
 	}
+//	public func makeIterator() -> NQuadraticIndexIteratorVariant {
+//		return NQuadraticIndexIteratorVariant(sequence: self)
+//	}
 }
 
 public struct NQuadraticIndexIterator: IteratorProtocol {
@@ -283,34 +281,137 @@ public struct NQuadraticIndexIterator: IteratorProtocol {
 		if current.column == end.column {
 			current.column = start.column
 			current.row += step.row
-			if current.row == end.row {
-				done = true
-			}
+			done = (current.row == end.row)
 		}
 		return loc
 	}
 }
 
+// Variant to test generic implementation on known type (same code, but it's faster)
+/*
+public struct NQuadraticIndexIteratorVariant: IteratorProtocol {
+	let sequence: NQuadraticIndexRange
+	var iterators: (Range<Int>.Iterator, Range<Int>.Iterator)
+	var current: (Int, Int)
+	var done: Bool
+	//	var combined: Element
 
-/*public protocol QuadraticSequence: Sequence where Element == Int {
-	associatedtype LinearSequence: Sequence where LinearSequence.Element == Element
-	var sequences: (LinearSequence, LinearSequence) { get }
+	init(sequence s: NQuadraticIndexRange) {
+		sequence = s
+		iterators = (sequence.row.makeIterator(), sequence.column.makeIterator())
+
+		if let i0 = iterators.0.next(), let i1 = iterators.1.next() {
+			done = false
+			current.0 = i0
+			current.1 = i1
+		} else {
+			done = true
+			current.0 = 0
+			current.1 = 0
+		}
+	}
+
+	public mutating func next() -> (Int,Int)? {
+		guard !done else { return nil }
+
+		let loc = (current.0, current.1)
+
+		if let i1 = iterators.1.next() {
+			current.1 = i1
+		} else {
+			if let i0 = iterators.0.next() {
+				current.0 = i0
+				iterators.1 = sequence.column.makeIterator()
+				current.1 = iterators.1.next()!
+			} else {
+				done = true
+			}
+		}
+
+		return loc
+	}
 }
-public struct QuadraticIterator: IteratorProtocol {
-	public mutating func next() -> Int? {
-		return 0
+*/
+
+// Quadratic Sequence Generic Protocol + iteration implementation as an extension.
+// (Slower)
+/*
+public protocol QuadraticSequence: Sequence {
+	associatedtype LinearSequence: Sequence
+
+	var sequences: (LinearSequence, LinearSequence) { get }
+	static func combineDimensions(_: LinearSequence.Element, _: LinearSequence.Element) -> Element
+	// this is to avoid using optional in iterator (but this value is not used)
+	static func _defaultLinearSequenceElement() -> LinearSequence.Element
+}
+public struct QuadraticIterator<Sequence: QuadraticSequence>: IteratorProtocol {
+	let sequence: Sequence
+	var iterators: (Sequence.LinearSequence.Iterator, Sequence.LinearSequence.Iterator)
+	var current: (Sequence.LinearSequence.Element, Sequence.LinearSequence.Element)
+	var done: Bool
+
+	init(sequence s: Sequence) {
+		sequence = s
+		iterators = (sequence.sequences.0.makeIterator(), sequence.sequences.1.makeIterator())
+
+		if let i0 = iterators.0.next(), let i1 = iterators.1.next() {
+			done = false
+			current.0 = i0
+			current.1 = i1
+		} else {
+			done = true
+			current.0 = Sequence._defaultLinearSequenceElement()
+			current.1 = Sequence._defaultLinearSequenceElement()
+		}
+	}
+
+	public mutating func next() -> Sequence.Element? {
+		guard !done else { return nil }
+
+		let loc = Sequence.combineDimensions(current.0, current.1)
+
+		if let i1 = iterators.1.next() {
+			current.1 = i1
+		} else {
+			if let i0 = iterators.0.next() {
+				current.0 = i0
+				iterators.1 = sequence.sequences.1.makeIterator()
+				current.1 = iterators.1.next()!
+			} else {
+				done = true
+			}
+		}
+
+		return loc
 	}
 }
 extension QuadraticSequence {
-	public func makeIterator() -> QuadraticIterator {
-		return QuadraticIterator()
+	public func makeIterator() -> QuadraticIterator<Self> {
+		return QuadraticIterator(sequence: self)
 	}
 }
-
+extension QuadraticSequence where Self.LinearSequence.Element == Int {
+	public static func _defaultLinearSequenceElement() -> Int { return 0 }
+}
 extension NResolvedQuadraticSlice: QuadraticSequence {
+	public typealias Element = Int
+	public typealias LinearSequence = NResolvedSlice
+	public typealias Iterator = QuadraticIterator<NResolvedQuadraticSlice>
 	public var sequences: (NResolvedSlice, NResolvedSlice) { return (row, column) }
-}*/
-
+	public static func combineDimensions(_ r: Int, _ c: Int) -> Int {
+		return r+c
+	}
+}
+extension NQuadraticIndexRange: QuadraticSequence {
+	public typealias Element = (Int, Int)
+	public typealias LinearSequence = Range<Int>
+	public typealias Iterator = QuadraticIterator<NQuadraticIndexRange>
+	public var sequences: (Range<Int>, Range<Int>) { return (row, column) }
+	public static func combineDimensions(_ r: Int, _ c: Int) -> (Int, Int) {
+		return (r,c)
+	}
+}
+*/
 // MARK: - Augmenting other types
 extension CountableRange: NSliceExpression where Bound == Int {
 	public var step: Int? { return 1 }
