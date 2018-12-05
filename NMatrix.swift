@@ -7,7 +7,11 @@
 
 import Foundation
 
-public class NMatrix<Element: NValue> : NStorageAccessible {
+
+
+// Matrix type, with efficient creation and hi-perf slicing.
+// Memory model is similar to Swift's UnsafeMutablePointer, ie, a matrix is a 'view' on mutable contents.
+public struct NMatrix<Element: NValue> : NStorageAccessible {
 	public typealias Storage = NStorage<Element>
 	public typealias Vector = NVector<Element>
 	public typealias Matrix = NMatrix<Element>
@@ -28,22 +32,22 @@ public class NMatrix<Element: NValue> : NStorageAccessible {
 		storage = s
 		slice = sl
 	}
-	public convenience init(storage s: Storage, slices sl: (NResolvedSlice, NResolvedSlice)) {
+	public init(storage s: Storage, slices sl: (NResolvedSlice, NResolvedSlice)) {
 		self.init(storage: s, slice: NResolvedQuadraticSlice(row: sl.0, column: sl.1))
 	}
-	public convenience init(compactData: Data, rows: Int, columns: Int) {
+	public init(compactData: Data, rows: Int, columns: Int) {
 		precondition(compactData.count == rows * columns * MemoryLayout<Element>.stride)
 		
 		self.init(rows: rows, columns: columns)
 		_setFromCompactData(compactData)
 	}
 	
-	public convenience init(repeating value: Element = .none, rows: Int, columns: Int) {
+	public init(repeating value: Element = .none, rows: Int, columns: Int) {
 		let storage = Storage(allocatedCount: rows * columns, value: value)
 		self.init(storage: storage, slice: .default(rows: rows, columns: columns))
 	}
 	
-	public convenience init(_ values: [[Element]]) {
+	public init(_ values: [[Element]]) {
 		precondition(values.count > 0)
 		let rows = values.count, cols = values[0].count
 		for element in values {	precondition(element.count == cols) }
@@ -112,8 +116,7 @@ public class NMatrix<Element: NValue> : NStorageAccessible {
 	}
 	public subscript(row row: Int) -> Vector {
 		get { return vector(row: row) }
-		// TODO: improve that to avoid vector allocation. Could use something like an "iterator struct"
-		set { vector(row: row).set(from: newValue) }
+		nonmutating set { vector(row: row).set(from: newValue) }
 	}
 	
 	private func vector(column: Int) -> Vector {
@@ -122,20 +125,23 @@ public class NMatrix<Element: NValue> : NStorageAccessible {
 	}
 	public subscript(column col: Int) -> Vector {
 		get { return vector(column: col) }
-		set { vector(column: col).set(from: newValue) }
+		nonmutating set { vector(column: col).set(from: newValue) }
 	}
 	// Get submatrix
-	public subscript(_ rowSlice: NSliceExpression, _ colSlice: NSliceExpression) -> Matrix {
+	private func submatrix(_ rowSlice: NSliceExpression, _ colSlice: NSliceExpression) -> Matrix {
 		let rslice = rowSlice.resolve(within: slice.row)
 		let cslice = colSlice.resolve(within: slice.column)
-		
 		return Matrix(storage: storage, slices: (rslice, cslice))
+	}
+	public subscript(_ rowSlice: NSliceExpression, _ colSlice: NSliceExpression) -> Matrix {
+		get { return submatrix(rowSlice, colSlice) }
+		nonmutating set { submatrix(rowSlice, colSlice).set(from: newValue) }
 	}
 	
 	// Access one element
 	public subscript(row: Int, column: Int) -> Element {
 		get { return storage[slice.position(row, column)] }
-		set { storage[slice.position(row, column)] = newValue }
+		nonmutating set { storage[slice.position(row, column)] = newValue }
 	}
 	
 	// Access

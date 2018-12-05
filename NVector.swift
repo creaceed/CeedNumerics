@@ -7,7 +7,9 @@
 
 import Foundation
 
-public class NVector<Element: NValue> : NStorageAccessible {
+// Vector type, with efficient creation and hi-perf slicing.
+// Memory model is similar to Swift's UnsafeMutablePointer, ie, a vector is a 'view' on mutable contents.
+public struct NVector<Element: NValue> : NStorageAccessible {
 	public typealias Storage = NStorage<Element>
 	public typealias Vector = NVector<Element>
 	public typealias Access = Storage.LinearAccess
@@ -27,29 +29,29 @@ public class NVector<Element: NValue> : NStorageAccessible {
 		//layout = l
 		slice = sl
 	}
-	public convenience init(size: Int) {
+	public init(size: Int) {
 		let storage = Storage(allocatedCount: size)
 		self.init(storage: storage, slice: .default(count: size))
 	}
-	public convenience init(storage mem: Storage, count: Int) {
+	public init(storage mem: Storage, count: Int) {
 		let slice = NResolvedSlice(start: 0, count: count, step: 1)
 		self.init(storage: mem, slice: slice)
 	}
-	public convenience init(_ elements: [Element]) {
+	public init(_ elements: [Element]) {
 		self.init(size: elements.count)
 		
 		storage.withUnsafeAccess { access in
 			_ = UnsafeMutableBufferPointer(start: access.base, count: self.size).initialize(from: elements)
 		}
 	}
-	public convenience init(repeating value: Element, count: Int) {
+	public init(repeating value: Element, count: Int) {
 		self.init(size: count)
 		
 		storage.withUnsafeAccess { access in
 			_ = UnsafeMutableBufferPointer(start: access.base, count: self.size).initialize(repeating: value)
 		}
 	}
-	public convenience init(size: Int, generator: (_ index: Int) -> Element) {
+	public init(size: Int, generator: (_ index: Int) -> Element) {
 		self.init(size: size)
 		for i in 0..<size {
 			self[i] = generator(i)
@@ -72,12 +74,12 @@ public class NVector<Element: NValue> : NStorageAccessible {
 	// MARK: - Slicing -
 	public subscript(_ s: NSliceExpression) -> Vector {
 		get { return Vector(storage: storage, slice: s.resolve(within: slice)) }
-		set { Vector(storage: storage, slice: s.resolve(within: slice)).set(from: newValue) }
+		nonmutating set { Vector(storage: storage, slice: s.resolve(within: slice)).set(from: newValue) }
 	}
 	// Access one element
 	public subscript(index: Int) -> Element {
 		get { return storage[slice.position(at: index)] }
-		set { storage[slice.position(at: index)] = newValue }
+		nonmutating set { storage[slice.position(at: index)] = newValue }
 	}
 	
 	// Use Numerics.with variants as API
