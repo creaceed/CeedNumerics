@@ -26,6 +26,7 @@ public struct NMatrix<Element: NValue> : NStorageAccessible {
 	
 	public var rows: Int { return slice.row.rcount }
 	public var columns: Int { return slice.column.rcount }
+	public var size: (rows: Int, columns: Int) { return (rows, columns) }
 	public var indices: NQuadraticIndexRange { return NQuadraticIndexRange(rows: rows, columns: columns) }
 	
 	public init(storage s: Storage, slice sl: NResolvedQuadraticSlice) {
@@ -45,6 +46,9 @@ public struct NMatrix<Element: NValue> : NStorageAccessible {
 	public init(repeating value: Element = .none, rows: Int, columns: Int) {
 		let storage = Storage(allocatedCount: rows * columns, value: value)
 		self.init(storage: storage, slice: .default(rows: rows, columns: columns))
+	}
+	public init(repeating value: Element = .none, size: (Int, Int)) {
+		self.init(repeating: value, rows: size.0, columns: size.1)
 	}
 	
 	public init(_ values: [[Element]]) {
@@ -102,12 +106,6 @@ public struct NMatrix<Element: NValue> : NStorageAccessible {
 		return result
 	}
 	
-	public func set(from: Matrix) {
-		// TODO: could be faster (storage)
-		for (pos, rpos) in zip(slice, from.slice) {
-			storage[pos] = from.storage[rpos]
-		}
-	}
 	
 	// Get row/column as vector
 	private func vector(row: Int) -> Vector {
@@ -143,11 +141,59 @@ public struct NMatrix<Element: NValue> : NStorageAccessible {
 		get { return storage[slice.position(row, column)] }
 		nonmutating set { storage[slice.position(row, column)] = newValue }
 	}
-	
-	// Access
-	public func set(_ value: Element) {
-		for pos in slice {
-			storage[pos] = value
+	public subscript(index: (Int, Int)) -> Element {
+		get { return self[index.0, index.1] }
+		nonmutating set { self[index.0, index.1] = newValue }
+	}
+	// Masked access
+	public subscript(mask: NMatrixb) -> Vector {
+		get {
+			precondition(mask.size == size)
+			let c = mask.trueCount
+			let result = Vector(size: c)
+			var i=0
+			for index in mask.indices {
+				guard mask[index] == true else { continue }
+				result[i] = self[index]
+				i += 1
+			}
+			return result
+		}
+		nonmutating set {
+			precondition(mask.size == size)
+			let c = mask.trueCount
+			precondition(c == newValue.size)
+			var i=0
+			for index in mask.indices {
+				guard mask[index] == true else { continue }
+				self[index] = newValue[i]
+				i += 1
+			}
+		}
+	}
+	// Indexed access (Vector<Int>)
+	public subscript(indexes: NMatrixi) -> Vector {
+		get {
+			precondition(indexes.columns == 2)
+			let result = Vector(size: indexes.size.rows)
+			for index in indexes.indices.row {
+				let selfindex = (indexes[index, 0], indexes[index, 1])
+				assert(selfindex.0 >= 0 && selfindex.0 < self.rows)
+				assert(selfindex.1 >= 0 && selfindex.1 < self.columns)
+				result[index] = self[selfindex]
+			}
+			return result
+		}
+		nonmutating set {
+			precondition(indexes.columns == 2)
+			precondition(newValue.size == indexes.size.rows)
+			for index in indexes.indices.row {
+				let selfindex = (indexes[index, 0], indexes[index, 1])
+				assert(selfindex.0 >= 0 && selfindex.0 < self.rows)
+				assert(selfindex.1 >= 0 && selfindex.1 < self.columns)
+				self[selfindex] = newValue[index]
+			}
+
 		}
 	}
 	
@@ -157,6 +203,27 @@ public struct NMatrix<Element: NValue> : NStorageAccessible {
 			let base = saccess.base + slice.position(0, 0)
 			let access = Storage.QuadraticAccess(base: base, stride: (slice.row.rstep, slice.column.rstep), count: (slice.row.rcount, slice.column.rcount))
 			return try block(access)
+		}
+	}
+}
+
+// TODO: These Vector / Matrix funcs are very similar. Could probably push that into NDimensionalType.
+extension NMatrix {
+	// Access
+	public func set(from: Matrix) {
+		for (pos, rpos) in zip(slice, from.slice) {
+			storage[pos] = from.storage[rpos]
+		}
+	}
+	public func set(_ value: Element) {
+		for pos in slice {
+			storage[pos] = value
+		}
+	}
+	public func set(_ value: Element, mask: NMatrixb) {
+		precondition(mask.size == size)
+		for i in self.indices {
+			if mask[i] { self[i] = value }
 		}
 	}
 }
@@ -172,6 +239,26 @@ extension NMatrix where Element: SignedNumeric, Element.Magnitude == Element {
 		
 		return true
 	}
+	private static func _compare(lhs: Matrix, rhs: Matrix, _ op: (Element, Element) -> Bool) -> NMatrixb {
+		precondition(lhs.size == rhs.size)
+		let res = NMatrixb(size: lhs.size)
+		for i in res.indices { res[i] = op(lhs[i], rhs[i]) }
+		return res
+	}
+	private static func _compare(lhs: Matrix, rhs: Element, _ op: (Element, Element) -> Bool) -> NMatrixb {
+		let res = NMatrixb(size: lhs.size)
+		for i in res.indices { res[i] = op(lhs[i], rhs) }
+		return res
+	}
+	public static func <(lhs: Matrix, rhs: Matrix) -> NMatrixb { return _compare(lhs: lhs, rhs: rhs, <) }
+	public static func >(lhs: Matrix, rhs: Matrix) -> NMatrixb { return _compare(lhs: lhs, rhs: rhs, >) }
+	public static func <=(lhs: Matrix, rhs: Matrix) -> NMatrixb { return _compare(lhs: lhs, rhs: rhs, <=) }
+	public static func >=(lhs: Matrix, rhs: Matrix) -> NMatrixb { return _compare(lhs: lhs, rhs: rhs, >=) }
+	
+	public static func <(lhs: Matrix, rhs: Element) -> NMatrixb { return _compare(lhs: lhs, rhs: rhs, <) }
+	public static func >(lhs: Matrix, rhs: Element) -> NMatrixb { return _compare(lhs: lhs, rhs: rhs, >) }
+	public static func <=(lhs: Matrix, rhs: Element) -> NMatrixb { return _compare(lhs: lhs, rhs: rhs, <=) }
+	public static func >=(lhs: Matrix, rhs: Element) -> NMatrixb { return _compare(lhs: lhs, rhs: rhs, >=) }
 }
 
 extension NMatrix: NDimensionalType {
@@ -193,4 +280,13 @@ extension NMatrix: NDimensionalType {
 			return false
 		}
 	}
+}
+
+extension NMatrix where Element == Bool {
+	public var trueCount: Int {
+		var c = 0
+		for i in self.indices { c += self[i] ? 1 : 0 }
+		return c
+	}
+	public static prefix func !(rhs: NMatrix) -> NMatrix { return rhs._deriving { for i in rhs.indices { $0[i] = !rhs[i] } } }
 }

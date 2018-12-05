@@ -7,11 +7,12 @@
 
 import Foundation
 
-//public typealias `s` = NSlice
-
 public typealias NVectorf = NVector<Float>
 public typealias NVectord = NVector<Double>
+public typealias NVectori = NVector<Int>
+public typealias NVectorb = NVector<Bool>
 
 public typealias NMatrixf = NMatrix<Float>
 public typealias NMatrixd = NMatrix<Double>
-
+public typealias NMatrixi = NMatrix<Int>
+public typealias NMatrixb = NMatrix<Bool>

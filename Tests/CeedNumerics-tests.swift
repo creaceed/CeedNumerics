@@ -130,6 +130,33 @@ class CeedNumerics_tests_mac: XCTestCase {
 		XCTAssert(equals(Numerics.polyval(poly, x: xval), expected_polyval))
 	}
 	
+	func testMaskedAndIndexedAccess() {
+		let v1: NVectord = Numerics.linspace(start: 0.0, stop: 50.0, count: 51)
+		let ind = NVectori([5, 9, 10, 19])
+		let mask = (v1 >= 21.0)
+		
+		let m1 = NMatrixd([[1.0,2.0,3.0],
+							[1.0,-2.0,3.0],
+							[1.0,2.0,1.0],
+							[-1.0,2.0,1.0]])
+		
+		print(v1[ind])
+		v1[ind] = NVectord([-1.0, -1.0, -1.0, -3.0])
+		print(v1)
+		
+		print(v1 < 21.0)
+		print(v1[mask])
+		
+		v1.set(1.1, mask: mask)
+		print(v1)
+		
+		print(m1 >= 3.0)
+		//let mmask = m1 >= 3.0
+		print(m1[m1 >= 3.0])
+		m1.set(72.0, mask: m1 >= 3.0)
+		print(m1)
+	}
+	
 	func testMisc() {
 		let v1 = NVectord([1.0, 2.0, 3.0])
 		let v2 = NVectord([4.0, 5.0, 6.0])

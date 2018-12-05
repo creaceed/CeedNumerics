@@ -30,7 +30,7 @@ public typealias num = Numerics
 
 // Base value type for dimensional types (vector, matrix). Note that the goal is that these include Bool, Int.
 // Not just floating point types, even though that FP types get many additional features (signal processing related, accelerate, etc).
-public protocol NValue: CustomStringConvertible, Hashable {
+public protocol NValue {
 	var descriptionValueString: String { get }
 	static var none: Self { get }
 }
@@ -48,6 +48,6 @@ extension Int: NValue {
 	public static var none: Int { return 0 }
 }
 extension Bool: NValue {
-	public var descriptionValueString : String { return "\(self)" }
+	public var descriptionValueString: String { return "\(self)" }
 	public static var none: Bool { return false }
 }

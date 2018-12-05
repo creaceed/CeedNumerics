@@ -81,12 +81,80 @@ public struct NVector<Element: NValue> : NStorageAccessible {
 		get { return storage[slice.position(at: index)] }
 		nonmutating set { storage[slice.position(at: index)] = newValue }
 	}
+	// Masked access (Vector<Bool>)
+	public subscript(mask: NVectorb) -> Vector {
+		get {
+			precondition(mask.size == size)
+			let c = mask.trueCount
+			let result = Vector(size: c)
+			var i=0
+			for index in mask.indices {
+				guard mask[index] == true else { continue }
+				result[i] = self[index]
+				i += 1
+			}
+			return result
+		}
+		nonmutating set {
+			precondition(mask.size == size)
+			let c = mask.trueCount
+			precondition(c == newValue.size)
+			var i=0
+			for index in mask.indices {
+				guard mask[index] == true else { continue }
+				self[index] = newValue[i]
+				i += 1
+			}
+		}
+	}
+	// Indexed access (Vector<Int>)
+	public subscript(indexes: NVectori) -> Vector {
+		get {
+			let result = Vector(size: indexes.size)
+			for index in indexes.indices {
+				let selfindex = indexes[index]
+				assert(selfindex >= 0 && selfindex < self.size )
+				result[index] = self[selfindex]
+			}
+			return result
+		}
+		nonmutating set {
+			precondition(newValue.size == indexes.size)
+			for index in indexes.indices {
+				let selfindex = indexes[index]
+				assert(selfindex >= 0 && selfindex < self.size )
+				self[selfindex] = newValue[index]
+			}
+		}
+	}
+	
 	
 	// Use Numerics.with variants as API
 	public func _withStorageAccess<Result>(_ block: (_ access: Storage.LinearAccess) throws -> Result) rethrows -> Result {
 		return try storage.withUnsafeAccess { saccess in
 			let access = Storage.LinearAccess(base: saccess.base + slice.rstart, stride: slice.rstep, count: slice.rcount)
 			return try block(access)
+		}
+	}
+}
+
+extension NVector {
+	public func set(from: Vector) {
+		precondition(from.slice.rcount == slice.rcount)
+		
+		Numerics.withAddresses(from, self) { pfrom, pself in
+			pself.pointee = pfrom.pointee
+		}
+	}
+	public func set(_ value: Element) {
+		for i in self.indices {
+			self[i] = value
+		}
+	}
+	public func set(_ value: Element, mask: NVectorb) {
+		precondition(mask.size == size)
+		for i in self.indices {
+			if mask[i] { self[i] = value }
 		}
 	}
 }
@@ -101,16 +169,27 @@ extension NVector where Element: SignedNumeric, Element.Magnitude == Element {
 		}
 		return true
 	}
-}
-
-extension NVector {
-	public func set(from: Vector) {
-		precondition(from.slice.rcount == slice.rcount)
-		
-		Numerics.withAddresses(from, self) { pfrom, pself in
-			pself.pointee = pfrom.pointee
-		}
+	private static func _compare(lhs: Vector, rhs: Vector, _ op: (Element, Element) -> Bool) -> NVectorb {
+		precondition(lhs.size == rhs.size)
+		let res = NVectorb(size: lhs.size)
+		for i in res.indices { res[i] = op(lhs[i], rhs[i]) }
+		return res
 	}
+	private static func _compare(lhs: Vector, rhs: Element, _ op: (Element, Element) -> Bool) -> NVectorb {
+		let res = NVectorb(size: lhs.size)
+		for i in res.indices { res[i] = op(lhs[i], rhs) }
+		return res
+	}
+	public static func <(lhs: Vector, rhs: Vector) -> NVectorb { return _compare(lhs: lhs, rhs: rhs, <) }
+	public static func >(lhs: Vector, rhs: Vector) -> NVectorb { return _compare(lhs: lhs, rhs: rhs, >) }
+	public static func <=(lhs: Vector, rhs: Vector) -> NVectorb { return _compare(lhs: lhs, rhs: rhs, <=) }
+	public static func >=(lhs: Vector, rhs: Vector) -> NVectorb { return _compare(lhs: lhs, rhs: rhs, >=) }
+	//public static func .==(lhs: Vector, rhs: Vector) -> NVectorb { return _compare(lhs: lhs, rhs: rhs, ==) }
+	
+	public static func <(lhs: Vector, rhs: Element) -> NVectorb { return _compare(lhs: lhs, rhs: rhs, <) }
+	public static func >(lhs: Vector, rhs: Element) -> NVectorb { return _compare(lhs: lhs, rhs: rhs, >) }
+	public static func <=(lhs: Vector, rhs: Element) -> NVectorb { return _compare(lhs: lhs, rhs: rhs, <=) }
+	public static func >=(lhs: Vector, rhs: Element) -> NVectorb { return _compare(lhs: lhs, rhs: rhs, >=) }
 }
 
 extension NVector: NDimensionalType {
@@ -127,3 +206,11 @@ extension NVector: NDimensionalType {
 //	}
 }
 
+extension NVector where Element == Bool {
+	public var trueCount: Int {
+		var c = 0
+		for i in self.indices { c += self[i] ? 1 : 0 }
+		return c
+	}
+	public static prefix func !(rhs: NVector) -> NVector { return rhs._deriving { for i in rhs.indices { $0[i] = !rhs[i] } } }
+}

@@ -62,7 +62,8 @@ public class NStorage<Element: NValue> {
 	}
 	
 	public init(allocatedCount: Int, value: Element = .none) {
-		precondition(allocatedCount > 0)
+		// zero allowed (we need empty types)
+		precondition(allocatedCount >= 0)
 		pointer = UnsafeMutablePointer.allocate(capacity: allocatedCount)
 		pointer.initialize(repeating: value, count: allocatedCount)
 		count = allocatedCount
