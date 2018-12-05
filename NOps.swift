@@ -378,21 +378,21 @@ extension Numerics where Element: AccelerateFloatingPoint {
 		assert(output.rows == src.columns)
 		assert(output.columns == src.rows)
 		
-		if src.isCompact && output.isCompact {
-			withStorageAccess(src) { sacc in
-				withStorageAccess(output) { oacc in
+		withStorageAccess(src) { sacc in
+			withStorageAccess(output) { oacc in
+				if sacc.compact && oacc.compact {
 					assert(sacc.stride.column == 1 && sacc.stride.row == sacc.count.column)
 					assert(oacc.stride.column == 1 && oacc.stride.row == oacc.count.column)
 					
 					// rows columns of result (inverted).
 					Element.mx_mtrans(sacc.base, 1, oacc.base, 1, numericCast(src.columns), numericCast(src.rows))
-				}
-			}
-		} else {
-			// TODO: could use faster iterator approach
-			for i in 0..<src.rows {
-				for j in 0..<src.columns {
-					output[j, i] = src[i, j]
+				} else {
+					let sslice = sacc.slice, oslice = oacc.slice
+					for i in 0..<sslice.row.rcount {
+						for j in 0..<sslice.column.rcount {
+							oacc.base[oslice.position(j,i)] = sacc.base[sslice.position(i,j)]
+						}
+					}
 				}
 			}
 		}

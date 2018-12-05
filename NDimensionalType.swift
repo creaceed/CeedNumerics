@@ -14,11 +14,6 @@ public protocol NDimensionalType: CustomStringConvertible {
 	
 	// we don't define as vararg arrays, we let that up to the actual type to opt-out from array use (performance).
 	subscript(index: [Int]) -> Element { get set }
-	
-	// No gap between elements (useful for enabling Accelerate methods that have that requirement).
-	// For a tensor of dimension 3:
-	//		non compact dimension i implies that dimensions i+n are non compact as well.
-	//func isCompact(dimension: Int) -> Bool
 }
 
 extension NDimensionalType {
@@ -59,39 +54,6 @@ extension NDimensionalType {
 		get {
 			let shapeDescr = shape.map {"\($0)"}.joined(separator: "×")
 			return "(\(shapeDescr))" + recursiveDescription(index: [])
-//			var description = ""
-//			let it = DimensionalIterator(shape: shape)
-//			while let index = it.next() {
-//				var comma: Bool = (index.last! != shape.last! - 1)
-//				if index.last! == 0 {
-//					for (_, ind) in index.enumerated() {
-//						if ind == 0 { description += "[" }
-//						else { description += " " }
-//					}
-//					comma = false
-//				}
-//
-//				let value = self[index]
-////				if index.last! == 0 {
-////					var higherDimIndex = index
-////					higherDimIndex.removeLast()
-////					let indexString = higherDimIndex.map { "\($0)" }.joined(separator: ":") + ":x"
-////					description += " \(indexString) - "
-////				}
-//				description += "\(value.logString)\(comma ? "," : "") "
-//				if index.last! == shape.last!-1 {
-//					for (idim, ind) in index.reversed().enumerated() {
-//						let dim = dimension-1 - idim
-//						if ind == shape[dim] - 1 { description += "]" }
-//						else { description += " " }
-//					}
-//					description += "\n"
-//					if index.count > 2 && index[index.count-2] == shape[index.count-2] - 1 {
-//						description += "\n"
-//					}
-//				}
-//			}
-//			return description
 		}
 	}
 }

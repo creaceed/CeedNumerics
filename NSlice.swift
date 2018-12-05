@@ -58,7 +58,7 @@ public extension NSliceExpression {
 	//
 	public func resolve(within parent: NResolvedSlice) -> NResolvedSlice {
 		let local = resolve(size: parent.rcount)
-		return local.flatten(within: parent)
+		return local.compose(within: parent)
 	}
 }
 
@@ -152,7 +152,7 @@ public struct NResolvedSlice: NSliceExpression {
 		assert(index >= 0 && index < rcount)
 		return rstart + index * rstep
 	}
-	public func flatten(within parent: NResolvedSlice) -> NResolvedSlice {
+	public func compose(within parent: NResolvedSlice) -> NResolvedSlice {
 		return NResolvedSlice(start: parent.position(at: rstart), count: rcount, step: parent.rstep * rstep)
 	}
 }

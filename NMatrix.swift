@@ -264,21 +264,10 @@ extension NMatrix where Element: SignedNumeric, Element.Magnitude == Element {
 extension NMatrix: NDimensionalType {
 	public var dimension: Int { return 2 }
 	public var shape: [Int] { return [rows, columns] }
-	public var isCompact: Bool { return isCompact(dimension: 1) }
 	
 	public subscript(index: [Int]) -> Element {
 		get { assert(index.count == dimension); return self[index[0], index[1]] }
 		set { assert(index.count == dimension); self[index[0], index[1]] = newValue }
-	}
-	public func isCompact(dimension: Int) -> Bool {
-		assert(dimension == 0 || dimension == 1)
-		switch dimension {
-		case 0: return abs(slice.column.rstep) == 1
-		case 1: return isCompact(dimension: 0) && abs(slice.row.rstep) == columns
-		default:
-			assert(false)
-			return false
-		}
 	}
 }
 

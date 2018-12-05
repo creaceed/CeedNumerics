@@ -109,6 +109,12 @@ class CeedNumerics_tests_mac: XCTestCase {
 		let median3 = Numerics.median(input: vec, kernel: 3)
 		let median3res = NVectord([1.0, 1.5, 2.0, 1.5, 1.6, 1.6, 1.7])
 		
+		let smat = mat[0~4, 0~3~2].transposed()
+		
+		XCTAssert(equals(smat, NMatrixd( [[1.0,1.0,1.0,-1.0],
+										  [3.0,3.0,1.0,1.0]])
+		))
+		
 //		print("indices: ")
 //		for i in mat.indices { print("\(i)") }
 		
