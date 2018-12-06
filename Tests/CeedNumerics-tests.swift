@@ -209,6 +209,18 @@ class CeedNumerics_tests_mac: XCTestCase {
 //			print("sum= \(sum)")
 //		}
 //	}
+//	func testPerformanceXLoop() {
+//		// This is an example of a performance test case.
+//		self.measure {
+//			// Put the code you want to measure the time of here.
+//			let indices = XQuadraticIndexRange(rows: 1000, columns: 1000)
+//			var sum = 0
+//			for i in indices {
+//				sum += i.0+i.1
+//			}
+//			print("sum= \(sum)")
+//		}
+//	}
 //	func testPerformance2Loops() {
 //		// This is an example of a performance test case.
 //		self.measure {
