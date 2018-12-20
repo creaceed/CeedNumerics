@@ -28,6 +28,7 @@ public struct NMatrix<Element: NValue> : NStorageAccessible {
 	public var columns: Int { return slice.column.rcount }
 	public var size: (rows: Int, columns: Int) { return (rows, columns) }
 	public var indices: NQuadraticIndexRange { return NQuadraticIndexRange(rows: rows, columns: columns) }
+	public var compact: Bool { return slice.compact }
 	
 	public init(storage s: Storage, slice sl: NResolvedQuadraticSlice) {
 		storage = s
@@ -254,11 +255,14 @@ extension NMatrix where Element: SignedNumeric, Element.Magnitude == Element {
 	public static func >(lhs: Matrix, rhs: Matrix) -> NMatrixb { return _compare(lhs: lhs, rhs: rhs, >) }
 	public static func <=(lhs: Matrix, rhs: Matrix) -> NMatrixb { return _compare(lhs: lhs, rhs: rhs, <=) }
 	public static func >=(lhs: Matrix, rhs: Matrix) -> NMatrixb { return _compare(lhs: lhs, rhs: rhs, >=) }
+	// cannot do that
+//	public static func ==(lhs: Matrix, rhs: Matrix) -> NMatrixb { return _compare(lhs: lhs, rhs: rhs, >=) }
 	
 	public static func <(lhs: Matrix, rhs: Element) -> NMatrixb { return _compare(lhs: lhs, rhs: rhs, <) }
 	public static func >(lhs: Matrix, rhs: Element) -> NMatrixb { return _compare(lhs: lhs, rhs: rhs, >) }
 	public static func <=(lhs: Matrix, rhs: Element) -> NMatrixb { return _compare(lhs: lhs, rhs: rhs, <=) }
 	public static func >=(lhs: Matrix, rhs: Element) -> NMatrixb { return _compare(lhs: lhs, rhs: rhs, >=) }
+	public static func ==(lhs: Matrix, rhs: Element) -> NMatrixb { return _compare(lhs: lhs, rhs: rhs, ==) }
 }
 
 extension NMatrix: NDimensionalType {

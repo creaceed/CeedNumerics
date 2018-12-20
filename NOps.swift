@@ -354,6 +354,24 @@ extension Numerics where Element: AccelerateFloatingPoint {
 		return result
 	}
 	
+	// TODO: improve API naming.
+	public static func elementWiseMultiply(_ a: Matrix, _ b: Matrix, _ result: Matrix) {
+		precondition(a.shape == b.shape && a.shape == result.shape)
+		
+		withStorageAccess(a, b, result) { aacc, bacc, racc in
+			if aacc.compact && bacc.compact && racc.compact {
+				Element.mx_vmul(aacc.base, 1, bacc.base, 1, racc.base, 1, numericCast(aacc.count.row * aacc.count.column))
+			} else {
+				for i in 0..<aacc.count.row {
+					Element.mx_vmul(aacc.base(row: i), aacc.stride.column,
+									bacc.base(row: i), bacc.stride.column,
+									racc.base(row: i), racc.stride.column,
+									numericCast(aacc.count.column))
+				}
+			}
+		}
+	}
+	
 	public static func divide(_ a: Matrix, _ b: Matrix, _ result: Matrix) {
 		precondition(a.shape == b.shape && a.shape == result.shape)
 		
@@ -361,7 +379,6 @@ extension Numerics where Element: AccelerateFloatingPoint {
 			withStorageAccess(b) { bacc in
 				withStorageAccess(result) { racc in
 					if aacc.compact && bacc.compact && racc.compact {
-						
 						Element.mx_vdiv(aacc.base, 1, bacc.base, 1, racc.base, 1, numericCast(a.rows * a.columns))
 						//						print("\(aacc.base)")
 					} else {
@@ -469,6 +486,27 @@ extension Numerics where Element: AccelerateFloatingPoint {
 				}
 				return m
 			}
+		}
+	}
+	
+}
+
+extension Numerics where Element == Float {
+	// because of vImage, don't have double impl.
+	public static func convolve(input: Matrix, kernel: Matrix, output: Matrix) {
+		precondition(kernel.rows % 2 == 1 && kernel.columns % 2 == 1)
+		precondition(kernel.compact)
+		
+		withStorageAccess(input, kernel, output) { iacc, kacc, oacc in
+			if kacc.compact && iacc.stride.column == 1 && oacc.stride.column == 1 {
+				var ivim = iacc.vImage
+				var ovim = oacc.vImage
+
+				vImageConvolve_PlanarF(&ivim, &ovim, nil, 0, 0, kacc.base, numericCast(kacc.count.row), numericCast(kacc.count.column), 0.0, vImage_Flags(kvImageBackgroundColorFill))
+			} else {
+				fatalError("not implemented")
+			}
+			
 		}
 	}
 }

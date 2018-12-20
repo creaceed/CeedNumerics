@@ -176,6 +176,10 @@ extension NResolvedSlice: Sequence {
 
 public struct NResolvedQuadraticSlice {
 	public let row, column: NResolvedSlice
+	public var compact: Bool {
+		// only positive steps are considered compact
+		return row.rstep == column.rcount && column.rstep == 1
+	}
 	
 	public init(row r: NResolvedSlice, column c: NResolvedSlice) {
 		row = r

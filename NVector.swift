@@ -19,6 +19,7 @@ public struct NVector<Element: NValue> : NStorageAccessible {
 	
 	public var size: Int { return slice.rcount }
 	public var indices: Range<Int> { return 0..<size }
+	public var compact: Bool { return slice.rstep == 1 } // only positive steps are considered compact
 	
 	public var first: Element? { return size > 0 ? self[0] : nil }
 	public var last: Element? { return size > 0 ? self[size-1] : nil }

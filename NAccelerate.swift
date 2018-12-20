@@ -230,3 +230,13 @@ extension Float: AccelerateFloatingPoint {
 		cblas_sgemm(order, transA, transB, M, N, K, alpha, A, lda, B, ldb, beta, C, ldc)
 	}
 }
+
+// Type is typically Float, but other types are also possible
+public extension NStorage.QuadraticAccess where Element == Float {
+	var vImage: vImage_Buffer {
+		let bpe = MemoryLayout<Element>.stride
+		return vImage_Buffer(data: self.base, height: numericCast(self.count.row), width: numericCast(self.count.column), rowBytes: bpe * self.stride.row)
+	}
+}
+
+//ivim =

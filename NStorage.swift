@@ -146,6 +146,8 @@ public extension NStorage {
 		// Linear access for rows and columns (instead of specific API)
 		public func row(_ at: Int) -> LinearAccess { return LinearAccess(base: base(row: at), stride: stride.column, count: count.column) }
 		public func column(_ at: Int) -> LinearAccess { return LinearAccess(base: base(column: at), stride: stride.row, count: count.row) }
+		public var rows: LazyMapCollection<Range<Int>, LinearAccess> { return (0..<count.row).lazy.map { self.row($0) } }
+		public var columns: LazyMapCollection<Range<Int>, LinearAccess> { return (0..<count.column).lazy.map { self.column($0) } }
 		
 		public func linearized(coalesce: Bool) -> AnySequence<LinearAccess> {
 			if compact && coalesce {
