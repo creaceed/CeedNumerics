@@ -78,10 +78,11 @@ public struct NMatrix<Element: NValue> : NStorageAccessible {
 		var data = Data(count: rows * columns * MemoryLayout<Element>.stride)
 		
 		Numerics.withStorageAccess(self) { aacc in
-			data.withUnsafeMutableBytes { (pointer: UnsafeMutablePointer<Element>) in
+			data.withUnsafeMutableBytes { (pointer: UnsafeMutableRawBufferPointer) in
+				let tpointer = pointer.bindMemory(to: Element.self).baseAddress!
 				let memslice = NResolvedQuadraticSlice.default(rows: rows, columns: columns)
 				for (pos, mpos) in zip(aacc.slice, memslice) {
-					pointer[mpos] = aacc.base[pos]
+					tpointer[mpos] = aacc.base[pos]
 				}
 			}
 		}
@@ -91,10 +92,11 @@ public struct NMatrix<Element: NValue> : NStorageAccessible {
 		precondition(data.count == rows * columns * MemoryLayout<Element>.stride)
 		
 		Numerics.withStorageAccess(self) { aacc in
-			data.withUnsafeBytes { (pointer: UnsafePointer<Element>) in
+			data.withUnsafeBytes { (pointer: UnsafeRawBufferPointer) in
+				let tpointer = pointer.bindMemory(to: Element.self).baseAddress!
 				let memslice = NResolvedQuadraticSlice.default(rows: rows, columns: columns)
 				for (pos, mpos) in zip(aacc.slice, memslice) {
-					aacc.base[pos] = pointer[mpos]
+					aacc.base[pos] = tpointer[mpos]
 				}
 			}
 		}
