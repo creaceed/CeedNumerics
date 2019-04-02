@@ -92,7 +92,7 @@ public class NStorage<Element: NValue> {
 	}
 }
 
-public extension NStorage {
+extension NStorage {
 	
 	// MARK: - Storage Access -
 	public struct RawAccess {
@@ -167,7 +167,7 @@ public extension NStorage {
 	}
 }
 
-public extension Numerics {
+extension Numerics {
 	// MARK: - Storage Access
 	public static func withStorageAccess<T: NStorageAccessible, Result>(_ a: T, _ access: (T.Access) throws -> Result) rethrows -> Result where T.Element == Element {
 		return try a._withStorageAccess { acc in
