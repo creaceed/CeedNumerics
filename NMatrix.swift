@@ -12,6 +12,8 @@ import Foundation
 // Matrix type, with efficient creation and hi-perf slicing.
 // Memory model is similar to Swift's UnsafeMutablePointer, ie, a matrix is a 'view' on mutable contents.
 public struct NMatrix<Element: NValue> : NStorageAccessible {
+	public typealias NativeIndex = (row: Int, column: Int)
+	public typealias NativeIndexRange = NQuadraticIndexRange
 	public typealias Storage = NStorage<Element>
 	public typealias Vector = NVector<Element>
 	public typealias Matrix = NMatrix<Element>
@@ -144,7 +146,7 @@ public struct NMatrix<Element: NValue> : NStorageAccessible {
 		get { return storage[slice.position(row, column)] }
 		nonmutating set { storage[slice.position(row, column)] = newValue }
 	}
-	public subscript(index: (Int, Int)) -> Element {
+	public subscript(index: NativeIndex) -> Element {
 		get { return self[index.0, index.1] }
 		nonmutating set { self[index.0, index.1] = newValue }
 	}

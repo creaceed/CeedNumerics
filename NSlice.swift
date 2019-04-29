@@ -277,7 +277,7 @@ public struct NQuadraticIndexIterator: IteratorProtocol {
 		done = (astart == aend)
 	}
 	
-	public mutating func next() -> (Int, Int)? {
+	public mutating func next() -> (row: Int, column: Int)? {
 		guard !done else { return nil }
 		
 		let loc = (current.row, current.column)

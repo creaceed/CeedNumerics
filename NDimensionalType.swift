@@ -9,11 +9,15 @@ import Foundation
 
 public protocol NDimensionalType: CustomStringConvertible {
 	associatedtype Element: NValue
+	associatedtype NativeIndex
+	associatedtype NativeIndexRange: Sequence where NativeIndexRange.Element == NativeIndex
 	var dimension: Int { get }
 	var shape: [Int] { get } // size is dimension
 	
 	// we don't define as vararg arrays, we let that up to the actual type to opt-out from array use (performance).
 	subscript(index: [Int]) -> Element { get set }
+	subscript(index: NativeIndex) -> Element { get set }
+	var indices: NativeIndexRange { get }
 }
 
 extension NDimensionalType {
@@ -102,5 +106,14 @@ public class DimensionalIterator: IteratorProtocol {
 		}
 		
 		return true
+	}
+}
+
+extension NDimensionalType {
+	public mutating func randomize(min: Element, max: Element, seed: Int = 0) {
+		var generator = NSeededRandomNumberGenerator(seed: seed)
+		for index in self.indices {
+			self[index] = Element.random(min: min, max: max, using: &generator)
+		}
 	}
 }

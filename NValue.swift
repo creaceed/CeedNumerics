@@ -33,21 +33,43 @@ public typealias num = Numerics
 public protocol NValue {
 	var descriptionValueString: String { get }
 	static var none: Self { get }
+	// using min/max syntax so that we can use same syntax with Bool
+	static func random<G: RandomNumberGenerator>(min: Self, max: Self, using generator: inout G) -> Self
+}
+
+extension NValue {
+	static func random(min: Self, max: Self) -> Self {
+		var gen = SystemRandomNumberGenerator()
+		return random(min: min, max: max, using: &gen)
+	}
 }
 
 extension Double: NValue {
 	public var descriptionValueString : String { return String(format: "%6.3f", self) }
 	public static var none: Double { return 0.0 }
+	public static func random<G: RandomNumberGenerator>(min: Double, max: Double, using generator: inout G) -> Double {
+		return Double.random(in: min...max, using: &generator)
+	}
 }
 extension Float: NValue {
 	public var descriptionValueString : String { return String(format: "%6.3f", self) }
 	public static var none: Float { return 0.0 }
+	public static func random<G: RandomNumberGenerator>(min: Float, max: Float, using generator: inout G) -> Float {
+		return Float.random(in: min...max, using: &generator)
+	}
 }
 extension Int: NValue {
 	public var descriptionValueString : String { return String(format: "%6d", self) }
 	public static var none: Int { return 0 }
+	public static func random<G: RandomNumberGenerator>(min: Int, max: Int, using generator: inout G) -> Int {
+		return Int.random(in: min...max, using: &generator)
+	}
 }
 extension Bool: NValue {
 	public var descriptionValueString: String { return "\(self)" }
 	public static var none: Bool { return false }
+	public static func random<G: RandomNumberGenerator>(min: Bool, max: Bool, using generator: inout G) -> Bool {
+		if min == max { return min }
+		return Bool.random(using: &generator)
+	}
 }

@@ -10,6 +10,8 @@ import Foundation
 // Vector type, with efficient creation and hi-perf slicing.
 // Memory model is similar to Swift's UnsafeMutablePointer, ie, a vector is a 'view' on mutable contents.
 public struct NVector<Element: NValue> : NStorageAccessible {
+	public typealias NativeIndex = Int
+	public typealias NativeIndexRange = Range<Int>
 	public typealias Storage = NStorage<Element>
 	public typealias Vector = NVector<Element>
 	public typealias Access = Storage.LinearAccess
