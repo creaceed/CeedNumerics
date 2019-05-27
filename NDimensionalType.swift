@@ -13,14 +13,26 @@ public protocol NDimensionalType: CustomStringConvertible {
 	associatedtype NativeIndexRange: Sequence where NativeIndexRange.Element == NativeIndex
 	var dimension: Int { get }
 	var shape: [Int] { get } // size is dimension
+	var size: NativeIndex { get }
+	
+	init(repeating value: Element, size: NativeIndex)
 	
 	// we don't define as vararg arrays, we let that up to the actual type to opt-out from array use (performance).
 	subscript(index: [Int]) -> Element { get set }
 	subscript(index: NativeIndex) -> Element { get set }
 	var indices: NativeIndexRange { get }
+	
+//	internal func deriving() -> Self
 }
 
 extension NDimensionalType {
+	// quickie to allocate result with same size as self.
+	internal func _deriving(_ prep: (Self) -> ()) -> Self {
+		let result = Self(repeating: .none, size: self.size)
+		prep(result)
+		return result
+	}
+	
 	private func recursiveDescription(index: [Int]) -> String {
 		var description = ""
 		let dimi = index.count

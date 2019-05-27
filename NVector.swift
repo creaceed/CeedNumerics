@@ -32,23 +32,23 @@ public struct NVector<Element: NValue> : NStorageAccessible {
 		//layout = l
 		slice = sl
 	}
-	public init(size: Int) {
-		let storage = Storage(allocatedCount: size)
-		self.init(storage: storage, slice: .default(count: size))
-	}
+//	public init(size: Int) {
+//		let storage = Storage(allocatedCount: size)
+//		self.init(storage: storage, slice: .default(count: size))
+//	}
 	public init(storage mem: Storage, count: Int) {
 		let slice = NResolvedSlice(start: 0, count: count, step: 1)
 		self.init(storage: mem, slice: slice)
 	}
-	public init(_ elements: [Element]) {
-		self.init(size: elements.count)
-		
+	public init(_ values: [Element]) {
+		self.init(size: values.count)
 		storage.withUnsafeAccess { access in
-			_ = UnsafeMutableBufferPointer(start: access.base, count: self.size).initialize(from: elements)
+			_ = UnsafeMutableBufferPointer(start: access.base, count: self.size).initialize(from: values)
 		}
 	}
-	public init(repeating value: Element, count: Int) {
-		self.init(size: count)
+	public init(repeating value: Element = .none, size: Int) {
+		let storage = Storage(allocatedCount: size)
+		self.init(storage: storage, slice: .default(count: size))
 		
 		storage.withUnsafeAccess { access in
 			_ = UnsafeMutableBufferPointer(start: access.base, count: self.size).initialize(repeating: value)
@@ -64,13 +64,6 @@ public struct NVector<Element: NValue> : NStorageAccessible {
 	public func copy() -> Vector {
 		let result = Vector(size: size)
 		result.set(from: self)
-		return result
-	}
-	
-	// quickie to allocate result with same size as self.
-	internal func _deriving(_ prep: (Vector) -> ()) -> Vector {
-		let result = Vector(size: self.size)
-		prep(result)
 		return result
 	}
 	
@@ -144,9 +137,14 @@ public struct NVector<Element: NValue> : NStorageAccessible {
 extension NVector {
 	public func set(from: Vector) {
 		precondition(from.slice.rcount == slice.rcount)
-		
 		Numerics.withAddresses(from, self) { pfrom, pself in
 			pself.pointee = pfrom.pointee
+		}
+	}
+	public func set(from: [Element]) {
+		precondition(from.count == size)
+		for (i, j) in zip(self.indices, 0..<from.count) {
+			self[i] = from[j]
 		}
 	}
 	public func set(_ value: Element) {

@@ -132,10 +132,16 @@ extension NStorage {
 		public let base: UnsafeMutablePointer<Element>
 		
 		// navigate relatively to the first element.
+		
+		// stride: storage distance (elements) between elements in successive row/column
 		public let stride: (row: Int, column: Int)
+		// count: number of rows / columns
 		public let count: (row: Int, column: Int)
 		// Note: QuadraticAccess's slice always starts at 0 (unlike Matrix's)
 		public var slice: NResolvedQuadraticSlice { return NResolvedQuadraticSlice(row: NResolvedSlice(start: 0, count: count.row, step: stride.row), column: NResolvedSlice(start: 0, count: count.column, step: stride.column)) }
+		
+		// shortcut for APIs that need this
+		public var rowBytes: Int { return stride.row * MemoryLayout<Element>.stride }
 		
 		public var compact: Bool { return stride.column == 1 && stride.row == count.column }
 		// points to the first element of row or columns
@@ -201,11 +207,25 @@ extension Numerics {
 		}
 	}
 	public static func withLinearizedAccesses<T: NStorageAccessible>(_ a: T, _ b: T, _ access: (Storage.LinearAccess, Storage.LinearAccess) -> Void) where T.Element == Element {
+		precondition(a.shape == b.shape)
 		a._withStorageAccess { aacc in
 			b._withStorageAccess { bacc in
 				let coalesce = aacc.compact && bacc.compact
 				for (alin, blin) in zip(aacc.linearized(coalesce: coalesce), bacc.linearized(coalesce: coalesce)) {
 					access(alin, blin)
+				}
+			}
+		}
+	}
+	public static func withLinearizedAccesses<T: NStorageAccessible>(_ a: T, _ b: T, _ c: T, _ access: (Storage.LinearAccess, Storage.LinearAccess, Storage.LinearAccess) -> Void) where T.Element == Element {
+		precondition(a.shape == b.shape && a.shape == c.shape)
+		a._withStorageAccess { aacc in
+			b._withStorageAccess { bacc in
+				c._withStorageAccess { cacc in
+					let coalesce = aacc.compact && bacc.compact && cacc.compact
+					for (alin, (blin, clin)) in zip(aacc.linearized(coalesce: coalesce), zip(bacc.linearized(coalesce: coalesce), cacc.linearized(coalesce: coalesce))) {
+						access(alin, blin, clin)
+					}
 				}
 			}
 		}

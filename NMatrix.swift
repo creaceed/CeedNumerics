@@ -28,7 +28,9 @@ public struct NMatrix<Element: NValue> : NStorageAccessible {
 	
 	public var rows: Int { return slice.row.rcount }
 	public var columns: Int { return slice.column.rcount }
-	public var size: (rows: Int, columns: Int) { return (rows, columns) }
+//	public var width: Int { return columns }
+//	public var height: Int { return rows }
+	public var size: NativeIndex { return (rows, columns) }
 	public var indices: NQuadraticIndexRange { return NQuadraticIndexRange(rows: rows, columns: columns) }
 	public var compact: Bool { return slice.compact }
 	
@@ -50,7 +52,7 @@ public struct NMatrix<Element: NValue> : NStorageAccessible {
 		let storage = Storage(allocatedCount: rows * columns, value: value)
 		self.init(storage: storage, slice: .default(rows: rows, columns: columns))
 	}
-	public init(repeating value: Element = .none, size: (Int, Int)) {
+	public init(repeating value: Element = .none, size: NativeIndex) {
 		self.init(repeating: value, rows: size.0, columns: size.1)
 	}
 	
@@ -67,6 +69,12 @@ public struct NMatrix<Element: NValue> : NStorageAccessible {
 				self[i, j] = val
 			}
 		}
+	}
+	// init from row-major values (values.count = rows x columns)
+	public init(_ values: [Element], rows: Int, columns: Int) {
+		precondition(values.count == rows * columns)
+		self.init(rows: rows, columns: columns)
+		self.set(from: values)
 	}
 	
 	public func copy() -> NMatrix {
@@ -103,14 +111,6 @@ public struct NMatrix<Element: NValue> : NStorageAccessible {
 			}
 		}
 	}
-	
-	// quickie to allocate result with same size as self.
-	internal func _deriving(_ prep: (Matrix) -> ()) -> Matrix {
-		let result = Matrix(rows: rows, columns: columns)
-		prep(result)
-		return result
-	}
-	
 	
 	// Get row/column as vector
 	private func vector(row: Int) -> Vector {
@@ -180,7 +180,7 @@ public struct NMatrix<Element: NValue> : NStorageAccessible {
 	public subscript(indexes: NMatrixi) -> Vector {
 		get {
 			precondition(indexes.columns == 2)
-			let result = Vector(size: indexes.size.rows)
+			let result = Vector(size: indexes.size.row)
 			for index in indexes.indices.row {
 				let selfindex = (indexes[index, 0], indexes[index, 1])
 				assert(selfindex.0 >= 0 && selfindex.0 < self.rows)
@@ -191,7 +191,7 @@ public struct NMatrix<Element: NValue> : NStorageAccessible {
 		}
 		nonmutating set {
 			precondition(indexes.columns == 2)
-			precondition(newValue.size == indexes.size.rows)
+			precondition(newValue.size == indexes.size.row)
 			for index in indexes.indices.row {
 				let selfindex = (indexes[index, 0], indexes[index, 1])
 				assert(selfindex.0 >= 0 && selfindex.0 < self.rows)
@@ -215,6 +215,7 @@ public struct NMatrix<Element: NValue> : NStorageAccessible {
 // TODO: These Vector / Matrix funcs are very similar. Could probably push that into NDimensionalType.
 extension NMatrix {
 	// Access
+	// Note: set API does not expose data range as NMatrix slicing is used for that
 	public func set(from: Matrix) {
 		for (pos, rpos) in zip(slice, from.slice) {
 			storage[pos] = from.storage[rpos]
@@ -229,6 +230,12 @@ extension NMatrix {
 		precondition(mask.size == size)
 		for i in self.indices {
 			if mask[i] { self[i] = value }
+		}
+	}
+	public func set(from rowMajorValues: [Element]) {
+		precondition(rowMajorValues.count == rows * columns)
+		for (pos, rpos) in zip(slice, rowMajorValues.indices) {
+			storage[pos] = rowMajorValues[rpos]
 		}
 	}
 }

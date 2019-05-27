@@ -23,11 +23,25 @@ public enum ConvolutionDomain {
 	// case full // M+K-1
 }
 
+// MARK: - Generic Dimensional Type Ops (apply to Vector, Matrix, Tensor)
+// Typically element-wise operations that can be implemented in terms to linearized access (any dimensions).
+extension Numerics where Element: AccelerateFloatingPoint {
+	public static func subtract<DT: NStorageAccessible>(_ a: DT, _ b: DT, _ result: DT) where DT.Element == Element {
+		precondition(a.shape == b.shape && a.shape == result.shape)
+		
+		withLinearizedAccesses(a, b, result) { aacc, bacc, racc in
+			Element.mx_vsub(aacc.base, aacc.stride, bacc.base, bacc.stride, racc.base, racc.stride, numericCast(racc.count))
+		}
+	}
+	public static func subtract<DT: NStorageAccessible>(_ a: DT, _ b: DT) -> DT where DT.Element == Element { return a._deriving { subtract(a, b, $0) } }
+}
+
+
 // MARK: - Vector Ops
 extension Numerics where Element: AccelerateFloatingPoint {
 	/// Creation of vectors
-	public static func zeros(count: Int) -> Vector { return Vector(repeating: 0.0, count: count) }
-	public static func ones(count: Int) -> Vector { return NVector(repeating: 1.0, count: count) }
+	public static func zeros(count: Int) -> Vector { return Vector(repeating: 0.0, size: count) }
+	public static func ones(count: Int) -> Vector { return NVector(repeating: 1.0, size: count) }
 	public static func linspace(start: Element, stop: Element, count: Int, output: Vector) {
 		precondition(count == output.size)
 		precondition(count >= 2)
@@ -102,8 +116,8 @@ extension Numerics where Element: AccelerateFloatingPoint {
 		let afterstart = before+input.size
 		
 		output[before ..< afterstart] = input
-		output[0 ..< before] = NVector(repeating: input.first!, count: before)
-		output[afterstart ..< output.size] = NVector(repeating: input.last!, count: after)
+		output[0 ..< before] = NVector(repeating: input.first!, size: before)
+		output[afterstart ..< output.size] = NVector(repeating: input.last!, size: after)
 	}
 	
 	// Arithmetic
@@ -141,13 +155,13 @@ extension Numerics where Element: AccelerateFloatingPoint {
 	}
 	public static func multiply(_ a: Vector, _ b: Vector) -> Vector { return a._deriving { multiply(a, b, $0) } }
 	
-	public static func subtract(_ a: Vector, _ b: Vector, _ result: Vector) {
-		precondition(a.shape == b.shape && a.shape == result.shape)
-		withStorageAccess(a, b, result) { aacc, bacc, racc in
-			Element.mx_vsub(aacc.base, aacc.stride, bacc.base, bacc.stride, racc.base, racc.stride, numericCast(racc.count))
-		}
-	}
-	public static func subtract(_ a: Vector, _ b: Vector) -> Vector { return a._deriving { subtract(a, b, $0) } }
+//	public static func subtract(_ a: Vector, _ b: Vector, _ result: Vector) {
+//		precondition(a.shape == b.shape && a.shape == result.shape)
+//		withStorageAccess(a, b, result) { aacc, bacc, racc in
+//			Element.mx_vsub(aacc.base, aacc.stride, bacc.base, bacc.stride, racc.base, racc.stride, numericCast(racc.count))
+//		}
+//	}
+//	public static func subtract(_ a: Vector, _ b: Vector) -> Vector { return a._deriving { subtract(a, b, $0) } }
 	public static func add(_ a: Vector, _ b: Vector, _ result: Vector) {
 		precondition(a.shape == b.shape && a.shape == result.shape)
 		withStorageAccess(a, b, result) { aacc, bacc, racc in
@@ -270,6 +284,13 @@ extension NVector where Element: AccelerateFloatingPoint {
 extension Numerics where Element: AccelerateFloatingPoint {
 	public static func zeros(rows: Int, columns: Int) -> Matrix { return Matrix(repeating: 0.0, rows: rows, columns: columns) }
 	public static func ones(rows: Int, columns: Int) -> Matrix { return Matrix(repeating: 1.0, rows: rows, columns: columns) }
+//	public static func add(_ a: Vector, _ b: Vector, _ result: Vector) {
+//		precondition(a.shape == b.shape && a.shape == result.shape)
+//		withStorageAccess(a, b, result) { aacc, bacc, racc in
+//			Element.mx_vadd(aacc.base, aacc.stride, bacc.base, bacc.stride, racc.base, racc.stride, numericCast(racc.count))
+//		}
+//	}
+//	public static func add(_ a: Vector, _ b: Vector) -> Vector { return a._deriving { add(a, b, $0) } }
 	
 	public static func multiply(_ a: Matrix, _ b: Element, _ result: Matrix) {
 		precondition(a.shape == result.shape)
@@ -525,6 +546,10 @@ extension NMatrix where Element: AccelerateFloatingPoint {
 		Numerics.transpose(self, result)
 		return result
 	}
+	
+	// Matrix/Matric
+	public static func -(lhs: Matrix, rhs: Matrix) -> Matrix { return Numerics.subtract(lhs, rhs) }
+//	public static func +(lhs: Matrix, rhs: Matrix) -> Matrix { return Numerics.add(lhs, rhs) }
 	
 	// Matrix/Vector
 	public static func *(lhs: Matrix, rhs: Matrix) -> Matrix { return Numerics.multiply(lhs, rhs) }
