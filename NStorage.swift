@@ -25,6 +25,8 @@ public protocol NDimensionalStorageAccess {
 	typealias Storage = NStorage<Element>
 	
 	var compact: Bool { get }
+	var coalescable: Bool { get }
+	
 	// traverse storage as successive linear segments (typically rows in a matrix).
 	// If coalesce is false, traverses contents in row-major order.
 	// If coaleasce is true, don't make any assumption on the shape of data, as a 'compact' matrix might return a single segment with all rows.
@@ -33,7 +35,7 @@ public protocol NDimensionalStorageAccess {
 }
 
 // Vector, Matrix types implement this
-public protocol NStorageAccessible: NDimensionalType  {
+public protocol NStorageAccessible: NDimensionalArray  {
 	associatedtype Access: NDimensionalStorageAccess where Element == Access.Element
 	
 	
@@ -112,6 +114,8 @@ extension NStorage {
 		public var last: Int { return (count-1) * stride }
 		
 		public var compact: Bool { return stride == 1 }
+		public var coalescable: Bool { return true }
+		
 		public var indexes: StrideTo<Int> { return Swift.stride(from: 0, to: end, by: stride) }
 		public var pointers: StrideTo<UnsafeMutablePointer<Element>> { return Swift.stride(from: base, to: base+end, by: stride) }
 		
@@ -143,7 +147,9 @@ extension NStorage {
 		// shortcut for APIs that need this
 		public var rowBytes: Int { return stride.row * MemoryLayout<Element>.stride }
 		
-		public var compact: Bool { return stride.column == 1 && stride.row == count.column }
+		public var compact: Bool { return slice.compact }
+		public var coalescable: Bool { return slice.coalesceable }
+		
 		// points to the first element of row or columns
 		public func base(row: Int) -> UnsafeMutablePointer<Element> { return base + row * stride.row }
 		public func base(column: Int) -> UnsafeMutablePointer<Element> { return base + column * stride.column }
@@ -156,8 +162,8 @@ extension NStorage {
 		public var columns: LazyMapCollection<Range<Int>, LinearAccess> { return (0..<count.column).lazy.map { self.column($0) } }
 		
 		public func linearized(coalesce: Bool) -> AnySequence<LinearAccess> {
-			if compact && coalesce {
-				let lin = LinearAccess(base: base, stride: 1, count: count.column * count.row)
+			if coalescable && coalesce {
+				let lin = LinearAccess(base: base, stride: stride.column, count: count.column * count.row)
 				return AnySequence(CollectionOfOne(lin))
 			} else {
 				let lins = (0..<count.row).lazy.map { self.row($0) }

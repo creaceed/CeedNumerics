@@ -25,7 +25,7 @@ public enum ConvolutionDomain {
 
 // MARK: - Generic Dimensional Type Ops (apply to Vector, Matrix, Tensor)
 // Typically element-wise operations that can be implemented in terms to linearized access (any dimensions).
-extension Numerics where Element: AccelerateFloatingPoint {
+extension Numerics where Element: NAccelerateFloatingPoint {
 	public static func subtract<DT: NStorageAccessible>(_ a: DT, _ b: DT, _ result: DT) where DT.Element == Element {
 		precondition(a.shape == b.shape && a.shape == result.shape)
 		
@@ -38,18 +38,32 @@ extension Numerics where Element: AccelerateFloatingPoint {
 
 
 // MARK: - Vector Ops
-extension Numerics where Element: AccelerateFloatingPoint {
+extension Numerics where Element: NAccelerateFloatingPoint {
 	/// Creation of vectors
 	public static func zeros(count: Int) -> Vector { return Vector(repeating: 0.0, size: count) }
 	public static func ones(count: Int) -> Vector { return NVector(repeating: 1.0, size: count) }
+	
+	// note: stop is included
 	public static func linspace(start: Element, stop: Element, count: Int, output: Vector) {
 		precondition(count == output.size)
 		precondition(count >= 2)
 		
 		withStorageAccess(output) { oaccess in
-			Element.mx_vramp(start, stop/Element(count-1), oaccess.base, numericCast(oaccess.stride), numericCast(oaccess.count))
+			Element.mx_vramp(start, (stop-start)/Element(count-1), oaccess.base, numericCast(oaccess.stride), numericCast(oaccess.count))
 		}
 	}
+	
+	// note: stop is not included
+	public static func range(start: Element = 0.0, stop: Element, step: Element = 1.0) -> Vector {
+		precondition((stop - start) * step > 0.0)
+		precondition(step != 0.0)
+		
+		// predictable count
+		let count: Int = ceil((stop - start) / step).roundedIntValue
+		
+		return linspace(start: start, stop: start + Element(count-1)*step, count: count)
+	}
+	
 	public static func linspace(start: Element, stop: Element, count: Int) -> Vector {
 		precondition(count >= 2)
 		let output = Vector(size: count)
@@ -224,7 +238,7 @@ extension Numerics where Element: AccelerateFloatingPoint {
 }
 
 // MARK: - Vector: Deriving new ones + operators
-extension NVector where Element: AccelerateFloatingPoint {
+extension NVector where Element: NAccelerateFloatingPoint {
 	public var mean: Element { return Numerics.mean(self) }
 	public var meanSquare: Element { return Numerics.meanSquare(self) }
 	public var maximum: Element { return Numerics.maximum(self) }
@@ -281,7 +295,7 @@ extension NVector where Element: AccelerateFloatingPoint {
 
 
 // MARK: - Matrix Ops
-extension Numerics where Element: AccelerateFloatingPoint {
+extension Numerics where Element: NAccelerateFloatingPoint {
 	public static func zeros(rows: Int, columns: Int) -> Matrix { return Matrix(repeating: 0.0, rows: rows, columns: columns) }
 	public static func ones(rows: Int, columns: Int) -> Matrix { return Matrix(repeating: 1.0, rows: rows, columns: columns) }
 //	public static func add(_ a: Vector, _ b: Vector, _ result: Vector) {
@@ -534,7 +548,7 @@ extension Numerics where Element == Float {
 
 
 // MARK: - Matrix: Deriving new ones + operators
-extension NMatrix where Element: AccelerateFloatingPoint {
+extension NMatrix where Element: NAccelerateFloatingPoint {
 	public var mean: Element { return Numerics.mean(self) }
 	public var meanSquare: Element { return Numerics.meanSquare(self) }
 	public var maximum: Element { return Numerics.maximum(self) }

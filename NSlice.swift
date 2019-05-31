@@ -87,12 +87,15 @@ precedencegroup SliceOperatorPrecedence {
 	lowerThan: AdditionPrecedence
 }
 
+// operator proposal: • › °
+// not working: ·
+
 infix operator ~ : SliceOperatorPrecedence
 public func ~(lhs: Int, rhs: Int) -> NSlice {
 	return NSlice(start: lhs, end: rhs, step: nil)
 }
-public func ~(lhs: NSlice, rhs: Int) -> NSlice {
-	let res = NSlice(start: lhs.start, end: lhs.end, step: rhs)
+public func ~(lhs: NSlice, rhs: Int) -> NResolvedSlice {
+	let res = NResolvedSlice(start: lhs.start!, end: lhs.end!, step: rhs)
 	return res
 }
 prefix operator ~
@@ -116,11 +119,6 @@ public postfix func ~~(a: Int) -> NSlice {
 	return NSlice(start: a, end: nil, step: nil)
 }
 
-//postfix operator °
-//public postfix func °(lhs: NSlice) -> NSlice {
-//	return NSlice(start: lhs.start, end: lhs.end, step: nil)
-//}
-
 // Slice expression can be resolved given the size of the container N:(0->N-1).
 // expression <:> resolved to <0:N:1>
 // expression <:> resolved to <0:N:1>
@@ -143,6 +141,10 @@ public struct NResolvedSlice: NSliceExpression {
 		rstart = start
 		rcount = count
 		rstep = step
+	}
+	public init(start: Int, end: Int, step: Int) {
+		// TODO: check for negative step
+		self.init(start: start, count: (end-start+step-1)/step, step: step)
 	}
 	public static func `default`(count: Int) -> NResolvedSlice {
 		return NResolvedSlice(start: 0, count: count, step: 1)
@@ -176,9 +178,15 @@ extension NResolvedSlice: Sequence {
 
 public struct NResolvedQuadraticSlice {
 	public let row, column: NResolvedSlice
+	// true if successive elements have no gap between them (including across dimensions)
 	public var compact: Bool {
 		// only positive steps are considered compact
 		return row.rstep == column.rcount && column.rstep == 1
+	}
+	// true if successive element are regularly distributed (including across dimensions)
+	public var coalesceable: Bool {
+		// single step can be used to traverse all values
+		return row.rstep == column.rcount * column.rstep
 	}
 	
 	public init(row r: NResolvedSlice, column c: NResolvedSlice) {

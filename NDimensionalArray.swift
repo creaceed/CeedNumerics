@@ -7,7 +7,7 @@
 
 import Foundation
 
-public protocol NDimensionalType: CustomStringConvertible {
+public protocol NDimensionalArray: CustomStringConvertible {
 	associatedtype Element: NValue
 	associatedtype NativeIndex
 	associatedtype NativeIndexRange: Sequence where NativeIndexRange.Element == NativeIndex
@@ -15,7 +15,17 @@ public protocol NDimensionalType: CustomStringConvertible {
 	var shape: [Int] { get } // size is dimension
 	var size: NativeIndex { get }
 	
+	var compact: Bool { get }
+	var coalesceable: Bool { get }
+	
+	// More general API (not implemented)
+//	func compact(in dimensions: ClosedRange<Int>)
+//	func coalescable(in dimensions: ClosedRange<Int>)
+	
 	init(repeating value: Element, size: NativeIndex)
+	
+	// Returns a independent copy with compact storage
+	func copy() -> Self
 	
 	// we don't define as vararg arrays, we let that up to the actual type to opt-out from array use (performance).
 	subscript(index: [Int]) -> Element { get set }
@@ -25,7 +35,7 @@ public protocol NDimensionalType: CustomStringConvertible {
 //	internal func deriving() -> Self
 }
 
-extension NDimensionalType {
+extension NDimensionalArray {
 	// quickie to allocate result with same size as self.
 	internal func _deriving(_ prep: (Self) -> ()) -> Self {
 		let result = Self(repeating: .none, size: self.size)
@@ -121,7 +131,7 @@ public class DimensionalIterator: IteratorProtocol {
 	}
 }
 
-extension NDimensionalType {
+extension NDimensionalArray {
 	public mutating func randomize(min: Element, max: Element, seed: Int = 0) {
 		var generator = NSeededRandomNumberGenerator(seed: seed)
 		for index in self.indices {

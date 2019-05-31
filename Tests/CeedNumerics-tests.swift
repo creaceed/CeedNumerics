@@ -10,15 +10,20 @@ import XCTest
 import Foundation
 @testable import CeedNumerics
 
+let _tol: Double = 0.00001
 
-func equals<E: NValue>(_ lhs: NVector<E>, _ rhs: NVector<E>) -> Bool where E: NumericsFloatingPoint {
+func equals<E: NValue>(_ lhs: NVector<E>, _ rhs: NVector<E>) -> Bool where E: NFloatingPoint {
 	let tolerance: E = 0.00001
 	return lhs.isEqual(to: rhs, tolerance: tolerance)
 }
 
-func equals<E: NValue>(_ lhs: NMatrix<E>, _ rhs: NMatrix<E>) -> Bool where E: NumericsFloatingPoint {
+func equals<E: NValue>(_ lhs: NMatrix<E>, _ rhs: NMatrix<E>) -> Bool where E: NFloatingPoint {
 	let tolerance: E = 0.00001
 	return lhs.isEqual(to: rhs, tolerance: tolerance)
+}
+
+func printHeader(_ header: String) {
+	print("\n\n\n*** \(header) ***")
 }
 
 class CeedNumerics_tests_mac: XCTestCase {
@@ -32,6 +37,8 @@ class CeedNumerics_tests_mac: XCTestCase {
 	}
 	
 	func testLinearSolver() {
+		printHeader("Solver")
+		
 		let matA = NMatrixd([[1.0,2.0,3.0],
 							 [1.0,-2.0,3.0],
 							 [1.0,2.0,1.0]])
@@ -56,6 +63,8 @@ class CeedNumerics_tests_mac: XCTestCase {
 	}
 	
 	func testNumerics() {
+		printHeader("Numerics")
+		
 		let mat = NMatrixd(rows: 3, columns: 4)
 		let vec = NVectord(size: 5)
 		vec[3] = 3.0
@@ -92,7 +101,30 @@ class CeedNumerics_tests_mac: XCTestCase {
 		print("linspace: \n\(linv)")
 	}
 	
+	func testDimensionality() {
+		printHeader("Dimensionality")
+		
+		let vec = Numerics.range(stop: 12.0)
+		XCTAssert(Numerics.mean(vec) - 5.5 < _tol)
+		print("Vec: \(vec)")
+		
+		let rowmat = vec.asMatrix()
+		print("Row Mat: \(rowmat)")
+		let fcop = rowmat.flatten()
+		
+		let mat = rowmat.reshaping(rows: 3, columns: 4)
+		print("Mat: \(mat)")
+		mat[1,3] = 36.0
+		print("Vec: \(vec)")
+		
+		let mat2 = rowmat.reshaping(rows: 2, columns: -1)
+		print("Mat: \(mat2)")
+		print("Flattened earlier copy: \(fcop)")
+	}
+	
 	func testAPIs() {
+		printHeader("API")
+		
 		let mat = NMatrixd([[1.0,2.0,3.0],
 							[1.0,-2.0,3.0],
 							[1.0,2.0,1.0],
@@ -137,6 +169,8 @@ class CeedNumerics_tests_mac: XCTestCase {
 	}
 	
 	func testMaskedAndIndexedAccess() {
+		printHeader("Masked & Indexed")
+		
 		let v1: NVectord = Numerics.linspace(start: 0.0, stop: 50.0, count: 51)
 		let ind = NVectori([5, 9, 10, 19])
 		let mask = (v1 >= 21.0)
@@ -164,6 +198,7 @@ class CeedNumerics_tests_mac: XCTestCase {
 	}
 	
 	func testMisc() {
+		printHeader("Misc")
 		let v1 = NVectord([1.0, 2.0, 3.0])
 		let v2 = NVectord([4.0, 5.0, 6.0])
 		

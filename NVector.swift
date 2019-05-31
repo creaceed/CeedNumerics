@@ -14,6 +14,7 @@ public struct NVector<Element: NValue> : NStorageAccessible {
 	public typealias NativeIndexRange = Range<Int>
 	public typealias Storage = NStorage<Element>
 	public typealias Vector = NVector<Element>
+	public typealias Matrix = NMatrix<Element>
 	public typealias Access = Storage.LinearAccess
 	
 	private let storage: Storage
@@ -22,6 +23,7 @@ public struct NVector<Element: NValue> : NStorageAccessible {
 	public var size: Int { return slice.rcount }
 	public var indices: Range<Int> { return 0..<size }
 	public var compact: Bool { return slice.rstep == 1 } // only positive steps are considered compact
+	public var coalesceable: Bool { return true } // vectors are always coalesceable because coalesce(vec)==vec
 	
 	public var first: Element? { return size > 0 ? self[0] : nil }
 	public var last: Element? { return size > 0 ? self[size-1] : nil }
@@ -65,6 +67,14 @@ public struct NVector<Element: NValue> : NStorageAccessible {
 		let result = Vector(size: size)
 		result.set(from: self)
 		return result
+	}
+	
+	public func asMatrix() -> Matrix {
+		let colslice = slice
+		let rowslice = NResolvedSlice(start: 0, count: 1, step: colslice.rstep * colslice.rcount)
+		let matrix = Matrix(storage: storage, slices: (row: rowslice, column: colslice))
+		
+		return matrix
 	}
 	
 	// MARK: - Slicing -
@@ -193,7 +203,7 @@ extension NVector where Element: SignedNumeric, Element.Magnitude == Element {
 	public static func >=(lhs: Vector, rhs: Element) -> NVectorb { return _compare(lhs: lhs, rhs: rhs, >=) }
 }
 
-extension NVector: NDimensionalType {
+extension NVector: NDimensionalArray {
 	public var dimension: Int { return 1 }
 	public var shape: [Int] { return [size] }
 	public subscript(index: [Int]) -> Element {

@@ -14,7 +14,7 @@ import Foundation
 // Rationale here: lower powers are generally the most significant (around 0 at least, think Taylor
 // series), so have them first.
 
-extension Numerics where Element: LinearSolverFloatingPoint {
+extension Numerics where Element: NLinearSolverFloatingPoint {
 	public static func polyval(_ poly: Vector, x: Vector, result: Vector) {
 		precondition(x.size == result.size)
 		precondition(poly.size > 0)

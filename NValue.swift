@@ -44,20 +44,18 @@ extension NValue {
 	}
 }
 
-extension Double: NValue {
-	public var descriptionValueString : String { return String(format: "%6.3f", self) }
-	public static var none: Double { return 0.0 }
-	public static func random<G: RandomNumberGenerator>(min: Double, max: Double, using generator: inout G) -> Double {
-		return Double.random(in: min...max, using: &generator)
+// We provide a single implementation for Float and Double (possibly more)
+extension NFloatingPoint /*where Self.RawSignificand : FixedWidthInteger*/ {
+	public var descriptionValueString : String { return String(format: "%6.3f", self.doubleValue) }
+	public static var none: Self { return 0.0 }
+	public static func random<G: RandomNumberGenerator>(min: Self, max: Self, using generator: inout G) -> Self {
+		return Self.random(in: min...max, using: &generator)
 	}
 }
-extension Float: NValue {
-	public var descriptionValueString : String { return String(format: "%6.3f", self) }
-	public static var none: Float { return 0.0 }
-	public static func random<G: RandomNumberGenerator>(min: Float, max: Float, using generator: inout G) -> Float {
-		return Float.random(in: min...max, using: &generator)
-	}
-}
+
+extension Double: NValue {}
+extension Float: NValue {}
+
 extension Int: NValue {
 	public var descriptionValueString : String { return String(format: "%6d", self) }
 	public static var none: Int { return 0 }

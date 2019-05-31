@@ -33,12 +33,13 @@ public struct NMatrix<Element: NValue> : NStorageAccessible {
 	public var size: NativeIndex { return (rows, columns) }
 	public var indices: NQuadraticIndexRange { return NQuadraticIndexRange(rows: rows, columns: columns) }
 	public var compact: Bool { return slice.compact }
+	public var coalesceable: Bool { return slice.coalesceable }
 	
 	public init(storage s: Storage, slice sl: NResolvedQuadraticSlice) {
 		storage = s
 		slice = sl
 	}
-	public init(storage s: Storage, slices sl: (NResolvedSlice, NResolvedSlice)) {
+	public init(storage s: Storage, slices sl: (row: NResolvedSlice, column: NResolvedSlice)) {
 		self.init(storage: s, slice: NResolvedQuadraticSlice(row: sl.0, column: sl.1))
 	}
 	public init(compactData: Data, rows: Int, columns: Int) {
@@ -77,10 +78,54 @@ public struct NMatrix<Element: NValue> : NStorageAccessible {
 		self.set(from: values)
 	}
 	
-	public func copy() -> NMatrix {
-		let result = NMatrix(rows: rows, columns: columns)
+	// Copy that is compact & coalescable, and with distinct storage from original
+	public func copy() -> Matrix {
+		let result = Matrix(rows: rows, columns: columns)
 		result.set(from: self)
 		return result
+	}
+	// Flatten returns a copy (compact & coalescable, distinct storage) that is reshaped to a single row 
+	public func flatten() -> Matrix {
+		let res = copy().reshaping(rows: 1, columns: -1)
+		return res
+	}
+	public func asVector() -> Vector {
+		precondition(coalesceable, "Matrix must be coalesceable to be reinterpreted as vector")
+		let vecslice = NResolvedSlice(start: slice.row.rstart + slice.column.rstart,
+									  count: slice.row.rcount * slice.column.rcount,
+									  step: slice.column.rstep)
+		let vector = Vector(storage: storage, slice: vecslice)
+		return vector
+	}
+	
+	public func reshaping(rows: Int, columns: Int) -> Matrix {
+		return reshaping(to: (rows, columns))
+	}
+	
+	public func reshaping(to size: NativeIndex) -> Matrix {
+		let rsize: NativeIndex
+		let n = self.size.row * self.size.column
+		
+		// we could refine that
+		precondition(coalesceable, "matrix should be coalesceable for reshaping. Copy it first if it is not.")
+		
+		switch size {
+		case (-1, -1): preconditionFailure("bad size argument")
+		case (-1, let c) where n % c == 0:
+			rsize.row = n / c
+			rsize.column = c
+		case (let r, -1)  where n % r == 0:
+			rsize.row = r
+			rsize.column = n / r
+		case (let r, let c)  where r * c == n:
+			rsize = (r, c)
+		default: preconditionFailure("bad size argument")
+		}
+		
+		let cslice = NResolvedSlice(start: slice.column.rstart, count: rsize.column, step: slice.column.rstep)
+		let rslice = NResolvedSlice(start: slice.row.rstart, count: rsize.row, step: slice.column.rstep * rsize.column)
+		
+		return Matrix(storage: storage, slices: (row: rslice, column: cslice))
 	}
 	
 	public var rawData : Data { return storage.rawData	}
@@ -113,22 +158,22 @@ public struct NMatrix<Element: NValue> : NStorageAccessible {
 	}
 	
 	// Get row/column as vector
-	private func vector(row: Int) -> Vector {
-		let rslice = NResolvedSlice(start: slice.position(row, 0), count: columns, step: slice.column.rstep)
+	private func row(at index: Int) -> Vector {
+		let rslice = NResolvedSlice(start: slice.position(index, 0), count: columns, step: slice.column.rstep)
 		return Vector(storage: storage, slice: rslice)
 	}
-	public subscript(row row: Int) -> Vector {
-		get { return vector(row: row) }
-		nonmutating set { vector(row: row).set(from: newValue) }
+	public subscript(row rindex: Int) -> Vector {
+		get { return row(at: rindex) }
+		nonmutating set { row(at: rindex).set(from: newValue) }
 	}
 	
-	private func vector(column: Int) -> Vector {
-		let cslice = NResolvedSlice(start: slice.position(0, column), count: rows, step: slice.row.rstep)
+	private func column(at index: Int) -> Vector {
+		let cslice = NResolvedSlice(start: slice.position(0, index), count: rows, step: slice.row.rstep)
 		return Vector(storage: storage, slice: cslice)
 	}
 	public subscript(column col: Int) -> Vector {
-		get { return vector(column: col) }
-		nonmutating set { vector(column: col).set(from: newValue) }
+		get { return column(at: col) }
+		nonmutating set { column(at: col).set(from: newValue) }
 	}
 	// Get submatrix
 	private func submatrix(_ rowSlice: NSliceExpression, _ colSlice: NSliceExpression) -> Matrix {
@@ -212,7 +257,7 @@ public struct NMatrix<Element: NValue> : NStorageAccessible {
 	}
 }
 
-// TODO: These Vector / Matrix funcs are very similar. Could probably push that into NDimensionalType.
+// TODO: These Vector / Matrix funcs are very similar. Could probably push that into NDimensionalArray.
 extension NMatrix {
 	// Access
 	// Note: set API does not expose data range as NMatrix slicing is used for that
@@ -276,7 +321,7 @@ extension NMatrix where Element: SignedNumeric, Element.Magnitude == Element {
 	public static func ==(lhs: Matrix, rhs: Element) -> NMatrixb { return _compare(lhs: lhs, rhs: rhs, ==) }
 }
 
-extension NMatrix: NDimensionalType {
+extension NMatrix: NDimensionalArray {
 	public var dimension: Int { return 2 }
 	public var shape: [Int] { return [rows, columns] }
 	

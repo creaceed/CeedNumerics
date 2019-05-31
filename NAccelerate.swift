@@ -14,21 +14,9 @@ private func _performanceCheckStride(_ strides: vDSP_Stride...) {
 	
 }
 
-public protocol NumericsFloatingPoint: FloatingPoint, ExpressibleByFloatLiteral, CustomStringConvertible {
-	var doubleValue: Double { get }
-}
-
-extension Double: NumericsFloatingPoint {
-	public var doubleValue: Double { return self }
-}
-extension Float: NumericsFloatingPoint {
-	public var doubleValue: Double { return Double(self) }
-}
-
-
 // This protocol allows to define generic variants of Accelerate functions (BLAS, vDSP, etc.). This enables easier
 // implementation of features across Float and Double (single code)
-public protocol AccelerateFloatingPoint: NValue, NumericsFloatingPoint {
+public protocol NAccelerateFloatingPoint: NValue, NFloatingPoint {
 	typealias PointerType = UnsafePointer<Self>
 	typealias MutablePointerType = UnsafeMutablePointer<Self>
 	typealias Element = Self
@@ -72,7 +60,7 @@ public protocol AccelerateFloatingPoint: NValue, NumericsFloatingPoint {
 	static func mx_gemm(order: CBLAS_ORDER, transA: CBLAS_TRANSPOSE, transB: CBLAS_TRANSPOSE, M: Int32, N: Int32, K: Int32, alpha: Element, A: PointerType, lda: Int32, B: PointerType, ldb: Int32, beta: Element, C: MutablePointerType, ldc: Int32)
 }
 
-extension Double: AccelerateFloatingPoint {
+extension Double: NAccelerateFloatingPoint {
 	public static func mx_conv(_ __A: PointerType, _ __IA: vDSP_Stride, _ __F: PointerType, _ __IF: vDSP_Stride, _ __C: MutablePointerType, _ __IC: vDSP_Stride, _ __N: vDSP_Length, _ __P: vDSP_Length) {
 		_performanceCheckStride(__IA, __IF, __IC)
 		vDSP_convD(__A, __IA, __F, __IF, __C, __IC, __N, __P)
@@ -151,7 +139,7 @@ extension Double: AccelerateFloatingPoint {
 		cblas_dgemm(order, transA, transB, M, N, K, alpha, A, lda, B, ldb, beta, C, ldc)
 	}
 }
-extension Float: AccelerateFloatingPoint {
+extension Float: NAccelerateFloatingPoint {
 	public static func mx_conv(_ __A: PointerType, _ __IA: vDSP_Stride, _ __F: PointerType, _ __IF: vDSP_Stride, _ __C: MutablePointerType, _ __IC: vDSP_Stride, _ __N: vDSP_Length, _ __P: vDSP_Length) {
 		_performanceCheckStride(__IA, __IF, __IC)
 		vDSP_conv(__A, __IA, __F, __IF, __C, __IC, __N, __P)

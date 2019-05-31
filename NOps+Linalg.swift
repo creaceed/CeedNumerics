@@ -17,7 +17,7 @@ public enum LinearAlgError : Error {
 
 
 
-public protocol LinearSolverFloatingPoint: AccelerateFloatingPoint {
+public protocol NLinearSolverFloatingPoint: NAccelerateFloatingPoint {
 	static func mx_gels(_ __trans: UnsafeMutablePointer<Int8>!, _ __m: UnsafeMutablePointer<__CLPK_integer>!, _ __n: UnsafeMutablePointer<__CLPK_integer>!, _ __nrhs: UnsafeMutablePointer<__CLPK_integer>!, _ __a: MutablePointerType!, _ __lda: UnsafeMutablePointer<__CLPK_integer>!, _ __b: MutablePointerType!, _ __ldb: UnsafeMutablePointer<__CLPK_integer>!, _ __work: MutablePointerType, _ __lwork: UnsafeMutablePointer<__CLPK_integer>!, _ __info: UnsafeMutablePointer<__CLPK_integer>!) -> Int32
 	
 	// Adding labels in Swift, easier to use.
@@ -29,7 +29,7 @@ public protocol LinearSolverFloatingPoint: AccelerateFloatingPoint {
 	static func mx_getri(n: UnsafeMutablePointer<__CLPK_integer>!, a: MutablePointerType, lda: UnsafeMutablePointer<__CLPK_integer>!, ipiv: UnsafeMutablePointer<__CLPK_integer>!, work: MutablePointerType, lwork: UnsafeMutablePointer<__CLPK_integer>!, info: UnsafeMutablePointer<__CLPK_integer>!) -> Int32
 }
 
-extension Float : LinearSolverFloatingPoint {
+extension Float : NLinearSolverFloatingPoint {
 	public static func mx_gels(_ __trans: UnsafeMutablePointer<Int8>!, _ __m: UnsafeMutablePointer<__CLPK_integer>!, _ __n: UnsafeMutablePointer<__CLPK_integer>!, _ __nrhs: UnsafeMutablePointer<__CLPK_integer>!, _ __a: MutablePointerType!, _ __lda: UnsafeMutablePointer<__CLPK_integer>!, _ __b: MutablePointerType!, _ __ldb: UnsafeMutablePointer<__CLPK_integer>!, _ __work: MutablePointerType, _ __lwork: UnsafeMutablePointer<__CLPK_integer>!, _ __info: UnsafeMutablePointer<__CLPK_integer>!) -> Int32 {
 		
 		return sgels_(__trans, __m, __n, __nrhs, __a, __lda, __b, __ldb, __work, __lwork, __info)
@@ -42,7 +42,7 @@ extension Float : LinearSolverFloatingPoint {
 	}
 }
 
-extension Double : LinearSolverFloatingPoint {
+extension Double : NLinearSolverFloatingPoint {
 	public static func mx_gels(_ __trans: UnsafeMutablePointer<Int8>!, _ __m: UnsafeMutablePointer<__CLPK_integer>!, _ __n: UnsafeMutablePointer<__CLPK_integer>!, _ __nrhs: UnsafeMutablePointer<__CLPK_integer>!, _ __a: MutablePointerType!, _ __lda: UnsafeMutablePointer<__CLPK_integer>!, _ __b: MutablePointerType!, _ __ldb: UnsafeMutablePointer<__CLPK_integer>!, _ __work: MutablePointerType, _ __lwork: UnsafeMutablePointer<__CLPK_integer>!, _ __info: UnsafeMutablePointer<__CLPK_integer>!) -> Int32 {
 		return dgels_(__trans, __m, __n, __nrhs, __a, __lda, __b, __ldb, __work, __lwork, __info)
 	}
@@ -54,7 +54,7 @@ extension Double : LinearSolverFloatingPoint {
 	}
 }
 
-extension Numerics where Element : LinearSolverFloatingPoint {
+extension Numerics where Element : NLinearSolverFloatingPoint {
 	// Solves Ax=b, with tA = T(A), tB = T(b), tX = T(x)
 	// Warning: optimized internal LAPACK-baszed implementation, it will overwrite tA/tB contents + has some specific
 	// constraints on tB's size (read below).
@@ -185,7 +185,7 @@ extension Numerics where Element : LinearSolverFloatingPoint {
 }
 
 // MARK: - Matrix: Deriving new ones + operators
-extension NMatrix where Element: LinearSolverFloatingPoint {
+extension NMatrix where Element: NLinearSolverFloatingPoint {
 	public func inverted() throws -> Matrix {
 		let result = Matrix(rows: columns, columns: rows)
 		try Numerics.invert(self, result)
