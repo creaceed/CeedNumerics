@@ -75,32 +75,7 @@ public struct NVector<Element: NValue> : NStorageAccessible, NDimensionalArray {
 		get { return storage[slice.position(at: index)] }
 		nonmutating set { storage[slice.position(at: index)] = newValue }
 	}
-	// Masked access (Vector<Bool>)
-	public subscript(mask: NVectorb) -> Vector {
-		get {
-			precondition(mask.size == size)
-			let c = mask.trueCount
-			let result = Vector(size: c)
-			var i=0
-			for index in mask.indices {
-				guard mask[index] == true else { continue }
-				result[i] = self[index]
-				i += 1
-			}
-			return result
-		}
-		nonmutating set {
-			precondition(mask.size == size)
-			let c = mask.trueCount
-			precondition(c == newValue.size)
-			var i=0
-			for index in mask.indices {
-				guard mask[index] == true else { continue }
-				self[index] = newValue[i]
-				i += 1
-			}
-		}
-	}
+	
 	// Indexed access (Vector<Int>)
 	public subscript(indexes: NVectori) -> Vector {
 		get {
