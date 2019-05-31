@@ -9,11 +9,17 @@ import Foundation
 
 public protocol NDimensionalArray: CustomStringConvertible {
 	associatedtype Element: NValue
-	associatedtype NativeIndex
-	associatedtype NativeIndexRange: Sequence where NativeIndexRange.Element == NativeIndex
+	associatedtype NativeIndex: Equatable
+	associatedtype NativeIndexRange: Sequence where NativeIndexRange.Element == Self.NativeIndex
+	associatedtype NativeResolvedSlice: NDimensionalResolvedSlice where NativeResolvedSlice.NativeIndex == Self.NativeIndex
+	associatedtype Mask: NDimensionalArray where Mask.Element == Bool, Mask.NativeIndex == Self.NativeIndex
+	typealias Vector = NVector<Element>
+	typealias Storage = NStorage<Element>
+	
 	var dimension: Int { get }
 	var shape: [Int] { get } // size is dimension
 	var size: NativeIndex { get }
+	//var slice: NativeResolvedSlice { get }
 	
 	var compact: Bool { get }
 	var coalesceable: Bool { get }
@@ -23,17 +29,66 @@ public protocol NDimensionalArray: CustomStringConvertible {
 //	func coalescable(in dimensions: ClosedRange<Int>)
 	
 	init(repeating value: Element, size: NativeIndex)
+	init(storage: Storage, slice: NativeResolvedSlice)
 	
 	// Returns a independent copy with compact storage
-	func copy() -> Self
+//	func copy() -> Self
+	func set(from: Self)
 	
 	// we don't define as vararg arrays, we let that up to the actual type to opt-out from array use (performance).
-	subscript(index: [Int]) -> Element { get set }
-	subscript(index: NativeIndex) -> Element { get set }
+	subscript(index: [Int]) -> Element { get nonmutating set }
+	subscript(index: NativeIndex) -> Element { get nonmutating set }
 	var indices: NativeIndexRange { get }
 	
 //	internal func deriving() -> Self
 }
+
+// Some common API
+extension NDimensionalArray {
+	public init(size: NativeIndex) {
+		self.init(repeating: .none, size: size)
+	}
+	public init(size: NativeIndex, generator: (_ index: NativeIndex) -> Element) {
+		self.init(size: size)
+		for i in indices {
+			self[i] = generator(i)
+		}
+	}
+	
+	// Copy that is compact & coalescable, and with distinct storage from original
+	public func copy() -> Self {
+		let result = Self(size: size)
+		result.set(from: self)
+		return result
+	}
+	
+	public subscript(mask: Mask) -> Vector {
+		get {
+			precondition(mask.size == size)
+			let c = mask.trueCount
+			let result = Vector(size: c)
+			var i=0
+			for index in mask.indices {
+				guard mask[index] == true else { continue }
+				result[i] = self[index]
+				i += 1
+			}
+			return result
+		}
+		nonmutating set {
+			precondition(mask.size == size)
+			let c = mask.trueCount
+			precondition(c == newValue.size)
+			var i=0
+			for index in mask.indices {
+				guard mask[index] == true else { continue }
+				self[index] = newValue[i]
+				i += 1
+			}
+		}
+	}
+}
+
 
 extension NDimensionalArray {
 	// quickie to allocate result with same size as self.
@@ -84,6 +139,15 @@ extension NDimensionalArray {
 	}
 }
 
+extension NDimensionalArray where Element == Bool {
+	internal var trueCount: Int {
+		var c = 0
+		for i in self.indices { c += self[i] ? 1 : 0 }
+		return c
+	}
+	public static prefix func !(rhs: Self) -> Self { return rhs._deriving { for i in rhs.indices { $0[i] = !rhs[i] } } }
+	
+}
 
 public class DimensionalIterator: IteratorProtocol {
 	private var shape: [Int]

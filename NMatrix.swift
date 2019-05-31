@@ -11,12 +11,15 @@ import Foundation
 
 // Matrix type, with efficient creation and hi-perf slicing.
 // Memory model is similar to Swift's UnsafeMutablePointer, ie, a matrix is a 'view' on mutable contents.
-public struct NMatrix<Element: NValue> : NStorageAccessible {
-	public typealias NativeIndex = (row: Int, column: Int)
+public struct NMatrix<Element: NValue> : NStorageAccessible, NDimensionalArray {
+	public typealias Mask = NMatrixb
+	public typealias Element = Element
+	public typealias NativeResolvedSlice = NResolvedQuadraticSlice
+	public typealias NativeIndex = NativeResolvedSlice.NativeIndex // NQuadraticIndex
 	public typealias NativeIndexRange = NQuadraticIndexRange
-	public typealias Storage = NStorage<Element>
 	public typealias Vector = NVector<Element>
 	public typealias Matrix = NMatrix<Element>
+	public typealias Storage = NStorage<Element>
 	public typealias Access = Storage.QuadraticAccess
 	
 	private let storage: Storage
@@ -26,11 +29,15 @@ public struct NMatrix<Element: NValue> : NStorageAccessible {
 	// use its own slice position (access.slice.position) to address its .base pointer, as it removes offset
 	private let slice: NResolvedQuadraticSlice
 	
+	// Conformance to NDArray
+	public var dimension: Int { return 2 }
+	public var shape: [Int] { return [rows, columns] }
+	
 	public var rows: Int { return slice.row.rcount }
 	public var columns: Int { return slice.column.rcount }
 //	public var width: Int { return columns }
 //	public var height: Int { return rows }
-	public var size: NativeIndex { return (rows, columns) }
+	public var size: NativeIndex { return NQuadraticIndex(rows, columns) }
 	public var indices: NQuadraticIndexRange { return NQuadraticIndexRange(rows: rows, columns: columns) }
 	public var compact: Bool { return slice.compact }
 	public var coalesceable: Bool { return slice.coalesceable }
@@ -54,7 +61,7 @@ public struct NMatrix<Element: NValue> : NStorageAccessible {
 		self.init(storage: storage, slice: .default(rows: rows, columns: columns))
 	}
 	public init(repeating value: Element = .none, size: NativeIndex) {
-		self.init(repeating: value, rows: size.0, columns: size.1)
+		self.init(repeating: value, rows: size.row, columns: size.column)
 	}
 	
 	public init(_ values: [[Element]]) {
@@ -99,7 +106,7 @@ public struct NMatrix<Element: NValue> : NStorageAccessible {
 	}
 	
 	public func reshaping(rows: Int, columns: Int) -> Matrix {
-		return reshaping(to: (rows, columns))
+		return reshaping(to: NQuadraticIndex(rows, columns))
 	}
 	
 	public func reshaping(to size: NativeIndex) -> Matrix {
@@ -109,16 +116,14 @@ public struct NMatrix<Element: NValue> : NStorageAccessible {
 		// we could refine that
 		precondition(coalesceable, "matrix should be coalesceable for reshaping. Copy it first if it is not.")
 		
-		switch size {
+		switch size.tupleValue {
 		case (-1, -1): preconditionFailure("bad size argument")
 		case (-1, let c) where n % c == 0:
-			rsize.row = n / c
-			rsize.column = c
+			rsize = NQuadraticIndex(n / c, c)
 		case (let r, -1)  where n % r == 0:
-			rsize.row = r
-			rsize.column = n / r
+			rsize = NQuadraticIndex(r, n / r)
 		case (let r, let c)  where r * c == n:
-			rsize = (r, c)
+			rsize = NQuadraticIndex(r, c)
 		default: preconditionFailure("bad size argument")
 		}
 		
@@ -176,14 +181,18 @@ public struct NMatrix<Element: NValue> : NStorageAccessible {
 		nonmutating set { column(at: col).set(from: newValue) }
 	}
 	// Get submatrix
-	private func submatrix(_ rowSlice: NSliceExpression, _ colSlice: NSliceExpression) -> Matrix {
+	private func submatrix(_ rowSlice: NSliceExpression, _ colSlice: NSliceExpression) -> NMatrix<Element> {
 		let rslice = rowSlice.resolve(within: slice.row)
 		let cslice = colSlice.resolve(within: slice.column)
-		return Matrix(storage: storage, slices: (rslice, cslice))
+		return NMatrix<Element>(storage: storage, slices: (rslice, cslice))
 	}
 	public subscript(_ rowSlice: NSliceExpression, _ colSlice: NSliceExpression) -> Matrix {
 		get { return submatrix(rowSlice, colSlice) }
 		nonmutating set { submatrix(rowSlice, colSlice).set(from: newValue) }
+	}
+	public subscript(_ slice: (row: NSliceExpression, col: NSliceExpression)) -> Matrix {
+		get { return submatrix(slice.row, slice.col) }
+		nonmutating set { submatrix(slice.row, slice.col).set(from: newValue) }
 	}
 	
 	// Access one element
@@ -192,8 +201,8 @@ public struct NMatrix<Element: NValue> : NStorageAccessible {
 		nonmutating set { storage[slice.position(row, column)] = newValue }
 	}
 	public subscript(index: NativeIndex) -> Element {
-		get { return self[index.0, index.1] }
-		nonmutating set { self[index.0, index.1] = newValue }
+		get { return self[index.row, index.column] }
+		nonmutating set { self[index.row, index.column] = newValue }
 	}
 	// Masked access
 	public subscript(mask: NMatrixb) -> Vector {
@@ -227,9 +236,9 @@ public struct NMatrix<Element: NValue> : NStorageAccessible {
 			precondition(indexes.columns == 2)
 			let result = Vector(size: indexes.size.row)
 			for index in indexes.indices.row {
-				let selfindex = (indexes[index, 0], indexes[index, 1])
-				assert(selfindex.0 >= 0 && selfindex.0 < self.rows)
-				assert(selfindex.1 >= 0 && selfindex.1 < self.columns)
+				let selfindex = NQuadraticIndex(indexes[index, 0], indexes[index, 1])
+				assert(selfindex.row >= 0 && selfindex.row < self.rows)
+				assert(selfindex.column >= 0 && selfindex.column < self.columns)
 				result[index] = self[selfindex]
 			}
 			return result
@@ -238,9 +247,9 @@ public struct NMatrix<Element: NValue> : NStorageAccessible {
 			precondition(indexes.columns == 2)
 			precondition(newValue.size == indexes.size.row)
 			for index in indexes.indices.row {
-				let selfindex = (indexes[index, 0], indexes[index, 1])
-				assert(selfindex.0 >= 0 && selfindex.0 < self.rows)
-				assert(selfindex.1 >= 0 && selfindex.1 < self.columns)
+				let selfindex = NQuadraticIndex(indexes[index, 0], indexes[index, 1])
+				assert(selfindex.row >= 0 && selfindex.row < self.rows)
+				assert(selfindex.column >= 0 && selfindex.column < self.columns)
 				self[selfindex] = newValue[index]
 			}
 
@@ -254,6 +263,11 @@ public struct NMatrix<Element: NValue> : NStorageAccessible {
 			let access = Storage.QuadraticAccess(base: base, stride: (slice.row.rstep, slice.column.rstep), count: (slice.row.rcount, slice.column.rcount))
 			return try block(access)
 		}
+	}
+	
+	public subscript(index: [Int]) -> Element {
+		get { assert(index.count == dimension); return self[index[0], index[1]] }
+		nonmutating set { assert(index.count == dimension); self[index[0], index[1]] = newValue }
 	}
 }
 
@@ -319,23 +333,4 @@ extension NMatrix where Element: SignedNumeric, Element.Magnitude == Element {
 	public static func <=(lhs: Matrix, rhs: Element) -> NMatrixb { return _compare(lhs: lhs, rhs: rhs, <=) }
 	public static func >=(lhs: Matrix, rhs: Element) -> NMatrixb { return _compare(lhs: lhs, rhs: rhs, >=) }
 	public static func ==(lhs: Matrix, rhs: Element) -> NMatrixb { return _compare(lhs: lhs, rhs: rhs, ==) }
-}
-
-extension NMatrix: NDimensionalArray {
-	public var dimension: Int { return 2 }
-	public var shape: [Int] { return [rows, columns] }
-	
-	public subscript(index: [Int]) -> Element {
-		get { assert(index.count == dimension); return self[index[0], index[1]] }
-		set { assert(index.count == dimension); self[index[0], index[1]] = newValue }
-	}
-}
-
-extension NMatrix where Element == Bool {
-	public var trueCount: Int {
-		var c = 0
-		for i in self.indices { c += self[i] ? 1 : 0 }
-		return c
-	}
-	public static prefix func !(rhs: NMatrix) -> NMatrix { return rhs._deriving { for i in rhs.indices { $0[i] = !rhs[i] } } }
 }

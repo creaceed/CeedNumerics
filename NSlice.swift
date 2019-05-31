@@ -119,11 +119,19 @@ public postfix func ~~(a: Int) -> NSlice {
 	return NSlice(start: a, end: nil, step: nil)
 }
 
+// N-Dimensional slice, abstraction is used to implement common  features in Matrix, Vector, etc.
+public protocol NDimensionalResolvedSlice {
+	associatedtype NativeIndex
+	
+	static func `default`(size: NativeIndex) -> Self
+}
+
 // Slice expression can be resolved given the size of the container N:(0->N-1).
 // expression <:> resolved to <0:N:1>
 // expression <:> resolved to <0:N:1>
 // expression <:3> resolved to <0:3:1>
-public struct NResolvedSlice: NSliceExpression {
+public struct NResolvedSlice: NSliceExpression, NDimensionalResolvedSlice {
+	public typealias NativeIndex = Int
 	public let rstart: Int
 	public let rcount: Int
 	public let rstep: Int // non zero. Can be negative.
@@ -146,8 +154,8 @@ public struct NResolvedSlice: NSliceExpression {
 		// TODO: check for negative step
 		self.init(start: start, count: (end-start+step-1)/step, step: step)
 	}
-	public static func `default`(count: Int) -> NResolvedSlice {
-		return NResolvedSlice(start: 0, count: count, step: 1)
+	public static func `default`(size: Int) -> NResolvedSlice {
+		return NResolvedSlice(start: 0, count: size, step: 1)
 	}
 	
 	public func position(at index: Int) -> Int {
@@ -176,7 +184,18 @@ extension NResolvedSlice: Sequence {
 	}
 }
 
-public struct NResolvedQuadraticSlice {
+public struct NQuadraticIndex: Equatable {
+	public var row, column: Int
+	public init(_ r: Int, _ c: Int) {
+		row = r
+		column = c
+	}
+	public var tupleValue: (row: Int, column: Int) { return (row, column) }
+}
+
+public struct NResolvedQuadraticSlice: NDimensionalResolvedSlice {
+	public typealias NativeIndex = NQuadraticIndex
+	
 	public let row, column: NResolvedSlice
 	// true if successive elements have no gap between them (including across dimensions)
 	public var compact: Bool {
@@ -194,9 +213,12 @@ public struct NResolvedQuadraticSlice {
 		column = c
 	}
 	// Row-major
+	public static func `default`(size: NativeIndex) -> NResolvedQuadraticSlice {
+		return NResolvedQuadraticSlice(row: NResolvedSlice(start: 0, count: size.row, step: size.column),
+									   column: .default(size: size.column))
+	}
 	public static func `default`(rows: Int, columns: Int) -> NResolvedQuadraticSlice {
-		return NResolvedQuadraticSlice(row: NResolvedSlice(start: 0, count: rows, step: columns),
-									   column: .default(count: columns))
+		return `default`(size: NQuadraticIndex(rows, columns))
 	}
 	public func position(_ ar: Int, _ ac: Int) -> Int {
 		return row.position(at: ar) + column.position(at: ac)
@@ -285,10 +307,10 @@ public struct NQuadraticIndexIterator: IteratorProtocol {
 		done = (astart == aend)
 	}
 	
-	public mutating func next() -> (row: Int, column: Int)? {
+	public mutating func next() -> NQuadraticIndex? {
 		guard !done else { return nil }
 		
-		let loc = (current.row, current.column)
+		let loc = NQuadraticIndex(current.row, current.column)
 		current.column += step.column
 		if current.column == end.column {
 			current.column = start.column

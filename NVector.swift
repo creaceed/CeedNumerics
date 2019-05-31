@@ -9,8 +9,10 @@ import Foundation
 
 // Vector type, with efficient creation and hi-perf slicing.
 // Memory model is similar to Swift's UnsafeMutablePointer, ie, a vector is a 'view' on mutable contents.
-public struct NVector<Element: NValue> : NStorageAccessible {
-	public typealias NativeIndex = Int
+public struct NVector<Element: NValue> : NStorageAccessible, NDimensionalArray {
+	public typealias Mask = NVectorb
+	public typealias NativeResolvedSlice = NResolvedSlice
+	public typealias NativeIndex = NativeResolvedSlice.NativeIndex // Int
 	public typealias NativeIndexRange = Range<Int>
 	public typealias Storage = NStorage<Element>
 	public typealias Vector = NVector<Element>
@@ -19,6 +21,9 @@ public struct NVector<Element: NValue> : NStorageAccessible {
 	
 	private let storage: Storage
 	private let slice: NResolvedSlice // addresses storage directly
+	
+	public var dimension: Int { return 1 }
+	public var shape: [Int] { return [size] }
 	
 	public var size: Int { return slice.rcount }
 	public var indices: Range<Int> { return 0..<size }
@@ -31,16 +36,7 @@ public struct NVector<Element: NValue> : NStorageAccessible {
 	// MARK: - Init -
 	public init(storage mem: Storage, slice sl: NResolvedSlice) {
 		storage = mem
-		//layout = l
 		slice = sl
-	}
-//	public init(size: Int) {
-//		let storage = Storage(allocatedCount: size)
-//		self.init(storage: storage, slice: .default(count: size))
-//	}
-	public init(storage mem: Storage, count: Int) {
-		let slice = NResolvedSlice(start: 0, count: count, step: 1)
-		self.init(storage: mem, slice: slice)
 	}
 	public init(_ values: [Element]) {
 		self.init(size: values.count)
@@ -50,34 +46,26 @@ public struct NVector<Element: NValue> : NStorageAccessible {
 	}
 	public init(repeating value: Element = .none, size: Int) {
 		let storage = Storage(allocatedCount: size)
-		self.init(storage: storage, slice: .default(count: size))
+		self.init(storage: storage, slice: .default(size: size))
 		
 		storage.withUnsafeAccess { access in
 			_ = UnsafeMutableBufferPointer(start: access.base, count: self.size).initialize(repeating: value)
 		}
 	}
-	public init(size: Int, generator: (_ index: Int) -> Element) {
-		self.init(size: size)
-		for i in 0..<size {
-			self[i] = generator(i)
-		}
-	}
 	
-	public func copy() -> Vector {
-		let result = Vector(size: size)
-		result.set(from: self)
-		return result
-	}
-	
-	public func asMatrix() -> Matrix {
+	public func asMatrix() -> NMatrix<Element> {
 		let colslice = slice
 		let rowslice = NResolvedSlice(start: 0, count: 1, step: colslice.rstep * colslice.rcount)
-		let matrix = Matrix(storage: storage, slices: (row: rowslice, column: colslice))
+		let matrix = NMatrix<Element>(storage: storage, slices: (row: rowslice, column: colslice))
 		
 		return matrix
 	}
 	
 	// MARK: - Slicing -
+	public subscript(index: [Int]) -> Element {
+		get { assert(index.count == 1); return self[index[0]] }
+		nonmutating set { assert(index.count == 1); self[index[0]] = newValue }
+	}
 	public subscript(_ s: NSliceExpression) -> Vector {
 		get { return Vector(storage: storage, slice: s.resolve(within: slice)) }
 		nonmutating set { Vector(storage: storage, slice: s.resolve(within: slice)).set(from: newValue) }
@@ -203,25 +191,3 @@ extension NVector where Element: SignedNumeric, Element.Magnitude == Element {
 	public static func >=(lhs: Vector, rhs: Element) -> NVectorb { return _compare(lhs: lhs, rhs: rhs, >=) }
 }
 
-extension NVector: NDimensionalArray {
-	public var dimension: Int { return 1 }
-	public var shape: [Int] { return [size] }
-	public subscript(index: [Int]) -> Element {
-		get { assert(index.count == 1); return self[index[0]] }
-		set { assert(index.count == 1); self[index[0]] = newValue }
-	}
-//	public var isCompact: Bool { return isCompact(dimension: 0) }
-//	public func isCompact(dimension: Int) -> Bool {
-//		assert(dimension == 0)
-//		return slice.rstep == 1
-//	}
-}
-
-extension NVector where Element == Bool {
-	public var trueCount: Int {
-		var c = 0
-		for i in self.indices { c += self[i] ? 1 : 0 }
-		return c
-	}
-	public static prefix func !(rhs: NVector) -> NVector { return rhs._deriving { for i in rhs.indices { $0[i] = !rhs[i] } } }
-}

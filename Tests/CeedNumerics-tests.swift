@@ -75,7 +75,7 @@ class CeedNumerics_tests_mac: XCTestCase {
 		print("row: \n\(mat[row: 2])")
 		print("column: \n\(mat[column: 1])")
 //		print("column: \n\(mat[column: 5])")
-		let slice = mat[NResolvedSlice(start: 2, count: 3, step: -1), NResolvedSlice.default(count: mat.columns)]
+		let slice = mat[NResolvedSlice(start: 2, count: 3, step: -1), NResolvedSlice.default(size: mat.columns)]
 		print("slice: \n\(slice)")
 		
 		let newRow = NVectord(size: 4)
