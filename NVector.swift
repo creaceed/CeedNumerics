@@ -34,15 +34,10 @@ public struct NVector<Element: NValue> : NStorageAccessible, NDimensionalArray {
 	public var last: Element? { return size > 0 ? self[size-1] : nil }
 	
 	// MARK: - Init -
+	// NDArray init
 	public init(storage mem: Storage, slice sl: NResolvedSlice) {
 		storage = mem
 		slice = sl
-	}
-	public init(_ values: [Element]) {
-		self.init(size: values.count)
-		storage.withUnsafeAccess { access in
-			_ = UnsafeMutableBufferPointer(start: access.base, count: self.size).initialize(from: values)
-		}
 	}
 	public init(repeating value: Element = .none, size: Int) {
 		let storage = Storage(allocatedCount: size)
@@ -50,6 +45,14 @@ public struct NVector<Element: NValue> : NStorageAccessible, NDimensionalArray {
 		
 		storage.withUnsafeAccess { access in
 			_ = UnsafeMutableBufferPointer(start: access.base, count: self.size).initialize(repeating: value)
+		}
+	}
+	
+	// Custom init
+	public init(_ values: [Element]) {
+		self.init(size: values.count)
+		storage.withUnsafeAccess { access in
+			_ = UnsafeMutableBufferPointer(start: access.base, count: self.size).initialize(from: values)
 		}
 	}
 	
@@ -62,18 +65,19 @@ public struct NVector<Element: NValue> : NStorageAccessible, NDimensionalArray {
 	}
 	
 	// MARK: - Slicing -
+	// NDarray: Access one element
 	public subscript(index: [Int]) -> Element {
 		get { assert(index.count == 1); return self[index[0]] }
 		nonmutating set { assert(index.count == 1); self[index[0]] = newValue }
 	}
-	public subscript(_ s: NSliceExpression) -> Vector {
-		get { return Vector(storage: storage, slice: s.resolve(within: slice)) }
-		nonmutating set { Vector(storage: storage, slice: s.resolve(within: slice)).set(from: newValue) }
-	}
-	// Access one element
 	public subscript(index: Int) -> Element {
 		get { return storage[slice.position(at: index)] }
 		nonmutating set { storage[slice.position(at: index)] = newValue }
+	}
+	// Specific (slicing)s
+	public subscript(_ s: NSliceExpression) -> Vector {
+		get { return Vector(storage: storage, slice: s.resolve(within: slice)) }
+		nonmutating set { Vector(storage: storage, slice: s.resolve(within: slice)).set(from: newValue) }
 	}
 	
 	// Indexed access (Vector<Int>)
@@ -103,32 +107,6 @@ public struct NVector<Element: NValue> : NStorageAccessible, NDimensionalArray {
 		return try storage.withUnsafeAccess { saccess in
 			let access = Storage.LinearAccess(base: saccess.base + slice.rstart, stride: slice.rstep, count: slice.rcount)
 			return try block(access)
-		}
-	}
-}
-
-extension NVector {
-	public func set(from: Vector) {
-		precondition(from.slice.rcount == slice.rcount)
-		Numerics.withAddresses(from, self) { pfrom, pself in
-			pself.pointee = pfrom.pointee
-		}
-	}
-	public func set(from: [Element]) {
-		precondition(from.count == size)
-		for (i, j) in zip(self.indices, 0..<from.count) {
-			self[i] = from[j]
-		}
-	}
-	public func set(_ value: Element) {
-		for i in self.indices {
-			self[i] = value
-		}
-	}
-	public func set(_ value: Element, mask: NVectorb) {
-		precondition(mask.size == size)
-		for i in self.indices {
-			if mask[i] { self[i] = value }
 		}
 	}
 }

@@ -271,34 +271,6 @@ public struct NMatrix<Element: NValue> : NStorageAccessible, NDimensionalArray {
 	}
 }
 
-// TODO: These Vector / Matrix funcs are very similar. Could probably push that into NDimensionalArray.
-extension NMatrix {
-	// Access
-	// Note: set API does not expose data range as NMatrix slicing is used for that
-	public func set(from: Matrix) {
-		for (pos, rpos) in zip(slice, from.slice) {
-			storage[pos] = from.storage[rpos]
-		}
-	}
-	public func set(_ value: Element) {
-		for pos in slice {
-			storage[pos] = value
-		}
-	}
-	public func set(_ value: Element, mask: NMatrixb) {
-		precondition(mask.size == size)
-		for i in self.indices {
-			if mask[i] { self[i] = value }
-		}
-	}
-	public func set(from rowMajorValues: [Element]) {
-		precondition(rowMajorValues.count == rows * columns)
-		for (pos, rpos) in zip(slice, rowMajorValues.indices) {
-			storage[pos] = rowMajorValues[rpos]
-		}
-	}
-}
-
 extension NMatrix where Element: SignedNumeric, Element.Magnitude == Element {
 	public func isEqual(to rhs: NMatrix, tolerance: Element) -> Bool {
 		precondition(rhs.shape == shape)

@@ -26,14 +26,14 @@ public enum ConvolutionDomain {
 // MARK: - Generic Dimensional Type Ops (apply to Vector, Matrix, Tensor)
 // Typically element-wise operations that can be implemented in terms to linearized access (any dimensions).
 extension Numerics where Element: NAccelerateFloatingPoint {
-	public static func subtract<DT: NStorageAccessible>(_ a: DT, _ b: DT, _ result: DT) where DT.Element == Element {
-		precondition(a.shape == b.shape && a.shape == result.shape)
+	public static func subtract<DT: NDimensionalArray>(_ a: DT, _ b: DT, _ result: DT) where DT.Element == Element {
+		precondition(a.size == b.size && a.size == result.size)
 		
 		withLinearizedAccesses(a, b, result) { aacc, bacc, racc in
 			Element.mx_vsub(aacc.base, aacc.stride, bacc.base, bacc.stride, racc.base, racc.stride, numericCast(racc.count))
 		}
 	}
-	public static func subtract<DT: NStorageAccessible>(_ a: DT, _ b: DT) -> DT where DT.Element == Element { return a._deriving { subtract(a, b, $0) } }
+	public static func subtract<DT: NDimensionalArray>(_ a: DT, _ b: DT) -> DT where DT.Element == Element { return a._deriving { subtract(a, b, $0) } }
 }
 
 

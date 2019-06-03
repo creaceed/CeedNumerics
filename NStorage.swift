@@ -29,15 +29,18 @@ public protocol NDimensionalStorageAccess {
 	
 	// traverse storage as successive linear segments (typically rows in a matrix).
 	// If coalesce is false, traverses contents in row-major order.
-	// If coaleasce is true, don't make any assumption on the shape of data, as a 'compact' matrix might return a single segment with all rows.
+	// If coaleasce is true, don't make any assumption on the shape of data: a coalesceable matrix will typically return a single segment with all rows, while a non-coalesceable matrix will return multiple segments.
 	func linearized(coalesce: Bool) -> AnySequence<Storage.LinearAccess>
 	//func linearized(coalesce: Bool, _ apply: (NStorage<Element>.LinearAccess) -> Void)
 }
 
 // Vector, Matrix types implement this
-public protocol NStorageAccessible: NDimensionalArray  {
+public protocol NStorageAccessible  {
+	associatedtype Element
+	associatedtype NativeIndex: Equatable
 	associatedtype Access: NDimensionalStorageAccess where Element == Access.Element
 	
+	var size: NativeIndex { get }
 	
 	func _withStorageAccess<Result>(_ block: (_ access: Access) throws -> Result) rethrows -> Result
 	//func linearized() -> LazySequence
@@ -213,7 +216,7 @@ extension Numerics {
 		}
 	}
 	public static func withLinearizedAccesses<T: NStorageAccessible>(_ a: T, _ b: T, _ access: (Storage.LinearAccess, Storage.LinearAccess) -> Void) where T.Element == Element {
-		precondition(a.shape == b.shape)
+		precondition(a.size == b.size)
 		a._withStorageAccess { aacc in
 			b._withStorageAccess { bacc in
 				let coalesce = aacc.compact && bacc.compact
@@ -224,7 +227,7 @@ extension Numerics {
 		}
 	}
 	public static func withLinearizedAccesses<T: NStorageAccessible>(_ a: T, _ b: T, _ c: T, _ access: (Storage.LinearAccess, Storage.LinearAccess, Storage.LinearAccess) -> Void) where T.Element == Element {
-		precondition(a.shape == b.shape && a.shape == c.shape)
+		precondition(a.size == b.size && a.size == c.size)
 		a._withStorageAccess { aacc in
 			b._withStorageAccess { bacc in
 				c._withStorageAccess { cacc in
@@ -250,7 +253,7 @@ extension Numerics {
 	public static func withValues<T: NStorageAccessible>(_ a: T, _ block: (_ value: Element) -> Void) where T.Element == Element { return withAddresses(a) { block($0.pointee) } }
 	
 	public static func withAddresses<T: NStorageAccessible>(_ a: T, _ b: T, _ block: (_ pa: UnsafeMutablePointer<Element>, _ pb: UnsafeMutablePointer<Element>) -> Void) where T.Element == Element {
-		precondition(a.shape == b.shape)
+		precondition(a.size == b.size)
 		a._withStorageAccess { aacc in
 			b._withStorageAccess { bacc in
 				// 2 arg -> (try to) coalesce only if both are compact
@@ -266,7 +269,7 @@ extension Numerics {
 	public static func withValues<T: NStorageAccessible>(_ a: T, _ b: T, _ block: (_ pa: Element, _ pb: Element)->Void) where T.Element == Element { return withAddresses(a, b) { block($0.pointee, $1.pointee) } }
 	
 	public static func withAddresses<T: NStorageAccessible>(_ a: T, _ b: T, _ c: T, _ block: (_ pa: UnsafeMutablePointer<Element>, _ pb: UnsafeMutablePointer<Element>, _ pc: UnsafeMutablePointer<Element>) -> Void) where T.Element == Element {
-		precondition(a.shape == b.shape && b.shape == c.shape)
+		precondition(a.size == b.size && b.size == c.size)
 		a._withStorageAccess { aacc in
 			b._withStorageAccess { bacc in
 				c._withStorageAccess { cacc in

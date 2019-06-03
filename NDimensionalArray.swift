@@ -7,9 +7,7 @@
 
 import Foundation
 
-public protocol NDimensionalArray: CustomStringConvertible {
-	associatedtype Element: NValue
-	associatedtype NativeIndex: Equatable
+public protocol NDimensionalArray: NStorageAccessible, CustomStringConvertible {
 	associatedtype NativeIndexRange: Sequence where NativeIndexRange.Element == Self.NativeIndex
 	associatedtype NativeResolvedSlice: NDimensionalResolvedSlice where NativeResolvedSlice.NativeIndex == Self.NativeIndex
 	associatedtype Mask: NDimensionalArray where Mask.Element == Bool, Mask.NativeIndex == Self.NativeIndex
@@ -19,6 +17,7 @@ public protocol NDimensionalArray: CustomStringConvertible {
 	var dimension: Int { get }
 	var shape: [Int] { get } // size is dimension
 	var size: NativeIndex { get }
+	var indices: NativeIndexRange { get }
 	//var slice: NativeResolvedSlice { get }
 	
 	var compact: Bool { get }
@@ -31,14 +30,9 @@ public protocol NDimensionalArray: CustomStringConvertible {
 	init(repeating value: Element, size: NativeIndex)
 	init(storage: Storage, slice: NativeResolvedSlice)
 	
-	// Returns a independent copy with compact storage
-//	func copy() -> Self
-	func set(from: Self)
-	
 	// we don't define as vararg arrays, we let that up to the actual type to opt-out from array use (performance).
 	subscript(index: [Int]) -> Element { get nonmutating set }
 	subscript(index: NativeIndex) -> Element { get nonmutating set }
-	var indices: NativeIndexRange { get }
 	
 //	internal func deriving() -> Self
 }
@@ -60,6 +54,30 @@ extension NDimensionalArray {
 		let result = Self(size: size)
 		result.set(from: self)
 		return result
+	}
+	// Note: set API does not expose data range as slicing (SliceExpression) is used for that
+	public func set(from: Self) {
+		precondition(from.size == self.size)
+		Numerics.withAddresses(from, self) { pfrom, pself in
+			pself.pointee = pfrom.pointee
+		}
+	}
+	public func set(_ value: Element) {
+		for i in self.indices {
+			self[i] = value
+		}
+	}
+	public func set(_ value: Element, mask: Mask) {
+		precondition(mask.size == size)
+		for i in self.indices {
+			if mask[i] { self[i] = value }
+		}
+	}
+	public func set(from rowMajorValues: [Element]) {
+		//precondition(rowMajorValues.count == indices.count)
+		for (pos, rpos) in zip(indices, rowMajorValues.indices) {
+			self[pos] = rowMajorValues[rpos]
+		}
 	}
 	
 	public subscript(mask: Mask) -> Vector {
