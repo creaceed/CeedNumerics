@@ -111,36 +111,3 @@ public struct NVector<Element: NValue> : NStorageAccessible, NDimensionalArray {
 	}
 }
 
-extension NVector where Element: SignedNumeric, Element.Magnitude == Element {
-	public func isEqual(to rhs: NVector, tolerance: Element) -> Bool {
-		// Brute force. Would be better with iterator
-		precondition(rhs.size == size)
-		
-		for i in 0..<size {
-			if abs(self[i] - rhs[i]) > tolerance { return false }
-		}
-		return true
-	}
-	private static func _compare(lhs: Vector, rhs: Vector, _ op: (Element, Element) -> Bool) -> NVectorb {
-		precondition(lhs.size == rhs.size)
-		let res = NVectorb(size: lhs.size)
-		for i in res.indices { res[i] = op(lhs[i], rhs[i]) }
-		return res
-	}
-	private static func _compare(lhs: Vector, rhs: Element, _ op: (Element, Element) -> Bool) -> NVectorb {
-		let res = NVectorb(size: lhs.size)
-		for i in res.indices { res[i] = op(lhs[i], rhs) }
-		return res
-	}
-	public static func <(lhs: Vector, rhs: Vector) -> NVectorb { return _compare(lhs: lhs, rhs: rhs, <) }
-	public static func >(lhs: Vector, rhs: Vector) -> NVectorb { return _compare(lhs: lhs, rhs: rhs, >) }
-	public static func <=(lhs: Vector, rhs: Vector) -> NVectorb { return _compare(lhs: lhs, rhs: rhs, <=) }
-	public static func >=(lhs: Vector, rhs: Vector) -> NVectorb { return _compare(lhs: lhs, rhs: rhs, >=) }
-	//public static func .==(lhs: Vector, rhs: Vector) -> NVectorb { return _compare(lhs: lhs, rhs: rhs, ==) }
-	
-	public static func <(lhs: Vector, rhs: Element) -> NVectorb { return _compare(lhs: lhs, rhs: rhs, <) }
-	public static func >(lhs: Vector, rhs: Element) -> NVectorb { return _compare(lhs: lhs, rhs: rhs, >) }
-	public static func <=(lhs: Vector, rhs: Element) -> NVectorb { return _compare(lhs: lhs, rhs: rhs, <=) }
-	public static func >=(lhs: Vector, rhs: Element) -> NVectorb { return _compare(lhs: lhs, rhs: rhs, >=) }
-}
-

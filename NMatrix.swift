@@ -270,39 +270,3 @@ public struct NMatrix<Element: NValue> : NStorageAccessible, NDimensionalArray {
 		nonmutating set { assert(index.count == dimension); self[index[0], index[1]] = newValue }
 	}
 }
-
-extension NMatrix where Element: SignedNumeric, Element.Magnitude == Element {
-	public func isEqual(to rhs: NMatrix, tolerance: Element) -> Bool {
-		precondition(rhs.shape == shape)
-		
-		// TODO: could be faster (storage)
-		for (pos, rpos) in zip(slice, rhs.slice) {
-			if abs(storage[rpos] - rhs.storage[pos]) > tolerance { return false }
-		}
-		
-		return true
-	}
-	private static func _compare(lhs: Matrix, rhs: Matrix, _ op: (Element, Element) -> Bool) -> NMatrixb {
-		precondition(lhs.size == rhs.size)
-		let res = NMatrixb(size: lhs.size)
-		for i in res.indices { res[i] = op(lhs[i], rhs[i]) }
-		return res
-	}
-	private static func _compare(lhs: Matrix, rhs: Element, _ op: (Element, Element) -> Bool) -> NMatrixb {
-		let res = NMatrixb(size: lhs.size)
-		for i in res.indices { res[i] = op(lhs[i], rhs) }
-		return res
-	}
-	public static func <(lhs: Matrix, rhs: Matrix) -> NMatrixb { return _compare(lhs: lhs, rhs: rhs, <) }
-	public static func >(lhs: Matrix, rhs: Matrix) -> NMatrixb { return _compare(lhs: lhs, rhs: rhs, >) }
-	public static func <=(lhs: Matrix, rhs: Matrix) -> NMatrixb { return _compare(lhs: lhs, rhs: rhs, <=) }
-	public static func >=(lhs: Matrix, rhs: Matrix) -> NMatrixb { return _compare(lhs: lhs, rhs: rhs, >=) }
-	// cannot do that
-//	public static func ==(lhs: Matrix, rhs: Matrix) -> NMatrixb { return _compare(lhs: lhs, rhs: rhs, >=) }
-	
-	public static func <(lhs: Matrix, rhs: Element) -> NMatrixb { return _compare(lhs: lhs, rhs: rhs, <) }
-	public static func >(lhs: Matrix, rhs: Element) -> NMatrixb { return _compare(lhs: lhs, rhs: rhs, >) }
-	public static func <=(lhs: Matrix, rhs: Element) -> NMatrixb { return _compare(lhs: lhs, rhs: rhs, <=) }
-	public static func >=(lhs: Matrix, rhs: Element) -> NMatrixb { return _compare(lhs: lhs, rhs: rhs, >=) }
-	public static func ==(lhs: Matrix, rhs: Element) -> NMatrixb { return _compare(lhs: lhs, rhs: rhs, ==) }
-}

@@ -42,11 +42,16 @@ extension NDimensionalArray {
 	public init(size: NativeIndex) {
 		self.init(repeating: .none, size: size)
 	}
-	public init(size: NativeIndex, generator: (_ index: NativeIndex) -> Element) {
+	public init(generator: (_ index: NativeIndex) -> Element, size: NativeIndex) {
 		self.init(size: size)
 		for i in indices {
 			self[i] = generator(i)
 		}
+	}
+	public init(values: [Element], size: NativeIndex) {
+		precondition(values.count == size.asElementCount)
+		self.init(size: size)
+		set(from: values)
 	}
 	
 	// Copy that is compact & coalescable, and with distinct storage from original
@@ -74,7 +79,7 @@ extension NDimensionalArray {
 		}
 	}
 	public func set(from rowMajorValues: [Element]) {
-		//precondition(rowMajorValues.count == indices.count)
+		precondition(rowMajorValues.count == size.asElementCount)
 		for (pos, rpos) in zip(indices, rowMajorValues.indices) {
 			self[pos] = rowMajorValues[rpos]
 		}
@@ -157,6 +162,7 @@ extension NDimensionalArray {
 	}
 }
 
+// Bool Arrays
 extension NDimensionalArray where Element == Bool {
 	internal var trueCount: Int {
 		var c = 0
@@ -166,53 +172,47 @@ extension NDimensionalArray where Element == Bool {
 	public static prefix func !(rhs: Self) -> Self { return rhs._deriving { for i in rhs.indices { $0[i] = !rhs[i] } } }
 	
 }
+// MARK: - Comparison with tolerance (SignedNumeric Arrays)
+extension NDimensionalArray where Element: SignedNumeric, Element.Magnitude == Element {
+	public func isEqual(to rhs: Self, tolerance: Element) -> Bool {
+		precondition(rhs.shape == shape)
 
-public class DimensionalIterator: IteratorProtocol {
-	private var shape: [Int]
-	private var presentIndex: [Int]
-	private var first = true
-	private var dimension: Int { return shape.count }
-	
-	public init(shape: [Int]) {
-		assert(shape.count > 0)
-		assert(shape.allSatisfy { $0 > 0 })
-		
-		self.shape = shape
-		self.presentIndex = [Int](repeating: 0, count: shape.count)
-	}
-	
-	public func next() -> [Int]? {
-		if presentIndex.isEmpty {
-			return nil
+		// TODO: could be faster with stoppable value enumeration
+		for (pos, rpos) in zip(indices, rhs.indices) {
+			if abs(rhs[pos] - rhs[rpos]) > tolerance { return false }
 		}
-		if first {
-			first = false
-			return presentIndex
-		}
-		if !_incrementIndex(presentIndex.count - 1) {
-			return nil
-		}
-		return presentIndex
-	}
-	
-	private func _incrementIndex(_ dim: Int) -> Bool {
-		if dim < 0 || dimension <= dim {
-			return false
-		}
-		
-		if presentIndex[dim] < shape[dim] - 1 {
-			presentIndex[dim] += 1
-		} else {
-			if !_incrementIndex(dim - 1) {
-				return false
-			}
-			presentIndex[dim] = 0
-		}
-		
 		return true
 	}
 }
 
+extension NDimensionalArray where Element: Comparable {
+	private static func _compare(lhs: Self, rhs: Self, _ op: (Element, Element) -> Bool) -> Self.Mask {
+		precondition(lhs.size == rhs.size)
+		let res = Mask(size: lhs.size)
+		for i in res.indices { res[i] = op(lhs[i], rhs[i]) }
+		return res
+	}
+	private static func _compare(lhs: Self, rhs: Element, _ op: (Element, Element) -> Bool) -> Mask {
+		let res = Mask(size: lhs.size)
+		for i in res.indices { res[i] = op(lhs[i], rhs) }
+		return res
+	}
+	public static func <(lhs: Self, rhs: Self) -> Mask { return _compare(lhs: lhs, rhs: rhs, <) }
+	public static func >(lhs: Self, rhs: Self) -> Mask { return _compare(lhs: lhs, rhs: rhs, >) }
+	public static func <=(lhs: Self, rhs: Self) -> Mask { return _compare(lhs: lhs, rhs: rhs, <=) }
+	public static func >=(lhs: Self, rhs: Self) -> Mask { return _compare(lhs: lhs, rhs: rhs, >=) }
+	// cannot do that
+//	public static func ==(lhs: Matrix, rhs: Matrix) -> NMatrixb { return _compare(lhs: lhs, rhs: rhs, >=) }
+
+	public static func <(lhs: Self, rhs: Element) -> Mask { return _compare(lhs: lhs, rhs: rhs, <) }
+	public static func >(lhs: Self, rhs: Element) -> Mask { return _compare(lhs: lhs, rhs: rhs, >) }
+	public static func <=(lhs: Self, rhs: Element) -> Mask { return _compare(lhs: lhs, rhs: rhs, <=) }
+	public static func >=(lhs: Self, rhs: Element) -> Mask { return _compare(lhs: lhs, rhs: rhs, >=) }
+	public static func ==(lhs: Self, rhs: Element) -> Mask { return _compare(lhs: lhs, rhs: rhs, ==) }
+}
+
+
+// Randomisation
 extension NDimensionalArray {
 	public mutating func randomize(min: Element, max: Element, seed: Int = 0) {
 		var generator = NSeededRandomNumberGenerator(seed: seed)

@@ -37,7 +37,7 @@ public protocol NDimensionalStorageAccess {
 // Vector, Matrix types implement this
 public protocol NStorageAccessible  {
 	associatedtype Element
-	associatedtype NativeIndex: Equatable
+	associatedtype NativeIndex: NDimensionalIndex
 	associatedtype Access: NDimensionalStorageAccess where Element == Access.Element
 	
 	var size: NativeIndex { get }

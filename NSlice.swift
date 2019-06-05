@@ -120,7 +120,7 @@ public postfix func ~~(a: Int) -> NSlice {
 }
 
 // N-Dimensional slice, abstraction is used to implement common  features in Matrix, Vector, etc.
-public protocol NDimensionalResolvedSlice {
+public protocol NDimensionalResolvedSlice: Sequence {
 	associatedtype NativeIndex
 	
 	static func `default`(size: NativeIndex) -> Self
@@ -167,6 +167,14 @@ public struct NResolvedSlice: NSliceExpression, NDimensionalResolvedSlice {
 	}
 }
 
+// Represents N-D indexes and sizes
+public protocol NDimensionalIndex: Equatable {
+	static var dimension: Int { get }
+	
+	// when self represents a N-D size, this returns the total element count. E.g. 3x4 -> 12
+	var asElementCount: Int { get }
+}
+
 extension NResolvedSlice: Sequence {
 	public typealias Element = Int
 	public typealias Iterator = StrideTo<Int>.Iterator
@@ -184,13 +192,21 @@ extension NResolvedSlice: Sequence {
 	}
 }
 
-public struct NQuadraticIndex: Equatable {
+extension Int: NDimensionalIndex {
+	public static var dimension: Int { return 1 }
+	public var asElementCount: Int { return self }
+}
+
+public struct NQuadraticIndex: NDimensionalIndex {
 	public var row, column: Int
 	public init(_ r: Int, _ c: Int) {
 		row = r
 		column = c
 	}
 	public var tupleValue: (row: Int, column: Int) { return (row, column) }
+	
+	public static var dimension: Int { return 2 }
+	public var asElementCount: Int { return row * column }
 }
 
 public struct NResolvedQuadraticSlice: NDimensionalResolvedSlice {
@@ -225,7 +241,8 @@ public struct NResolvedQuadraticSlice: NDimensionalResolvedSlice {
 	}
 }
 
-extension NResolvedQuadraticSlice: Sequence {
+// Sequence impl.
+extension NResolvedQuadraticSlice {
 	public typealias Element = Int
 	public typealias Iterator =  NQuadraticSliceIterator
 
