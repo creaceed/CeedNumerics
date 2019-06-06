@@ -14,11 +14,10 @@ public protocol NDimensionalArray: NStorageAccessible, CustomStringConvertible {
 	typealias Vector = NVector<Element>
 	typealias Storage = NStorage<Element>
 	
+	var shape: [Int] { get } // defined in extension below
 	var dimension: Int { get }
-	var shape: [Int] { get } // size is dimension
 	var size: NativeIndex { get }
 	var indices: NativeIndexRange { get }
-	//var slice: NativeResolvedSlice { get }
 	
 	var compact: Bool { get }
 	var coalesceable: Bool { get }
@@ -39,6 +38,8 @@ public protocol NDimensionalArray: NStorageAccessible, CustomStringConvertible {
 
 // Some common API
 extension NDimensionalArray {
+	public var shape: [Int] { return size.asArray }
+	
 	public init(size: NativeIndex) {
 		self.init(repeating: .none, size: size)
 	}

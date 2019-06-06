@@ -31,8 +31,6 @@ public struct NMatrix<Element: NValue> : NStorageAccessible, NDimensionalArray {
 	
 	// Conformance to NDArray
 	public var dimension: Int { return 2 }
-	public var shape: [Int] { return [rows, columns] }
-	
 	public var rows: Int { return slice.row.rcount }
 	public var columns: Int { return slice.column.rcount }
 //	public var width: Int { return columns }
@@ -85,12 +83,6 @@ public struct NMatrix<Element: NValue> : NStorageAccessible, NDimensionalArray {
 		self.set(from: values)
 	}
 	
-	// Copy that is compact & coalescable, and with distinct storage from original
-	public func copy() -> Matrix {
-		let result = Matrix(rows: rows, columns: columns)
-		result.set(from: self)
-		return result
-	}
 	// Flatten returns a copy (compact & coalescable, distinct storage) that is reshaped to a single row 
 	public func flatten() -> Matrix {
 		let res = copy().reshaping(rows: 1, columns: -1)

@@ -23,8 +23,6 @@ public struct NVector<Element: NValue> : NStorageAccessible, NDimensionalArray {
 	private let slice: NResolvedSlice // addresses storage directly
 	
 	public var dimension: Int { return 1 }
-	public var shape: [Int] { return [size] }
-	
 	public var size: Int { return slice.rcount }
 	public var indices: Range<Int> { return 0..<size }
 	public var compact: Bool { return slice.rstep == 1 } // only positive steps are considered compact

@@ -124,6 +124,8 @@ public protocol NDimensionalResolvedSlice: Sequence {
 	associatedtype NativeIndex
 	
 	static func `default`(size: NativeIndex) -> Self
+	
+	func position(at index: NativeIndex) -> Int
 }
 
 // Slice expression can be resolved given the size of the container N:(0->N-1).
@@ -173,6 +175,7 @@ public protocol NDimensionalIndex: Equatable {
 	
 	// when self represents a N-D size, this returns the total element count. E.g. 3x4 -> 12
 	var asElementCount: Int { get }
+	var asArray: [Int] { get }
 }
 
 extension NResolvedSlice: Sequence {
@@ -194,7 +197,9 @@ extension NResolvedSlice: Sequence {
 
 extension Int: NDimensionalIndex {
 	public static var dimension: Int { return 1 }
+	// convert a 'size' index to an element count
 	public var asElementCount: Int { return self }
+	public var asArray: [Int] { return [self] }
 }
 
 public struct NQuadraticIndex: NDimensionalIndex {
@@ -207,6 +212,7 @@ public struct NQuadraticIndex: NDimensionalIndex {
 	
 	public static var dimension: Int { return 2 }
 	public var asElementCount: Int { return row * column }
+	public var asArray: [Int] { return [row, column] } 
 }
 
 public struct NResolvedQuadraticSlice: NDimensionalResolvedSlice {
@@ -236,6 +242,11 @@ public struct NResolvedQuadraticSlice: NDimensionalResolvedSlice {
 	public static func `default`(rows: Int, columns: Int) -> NResolvedQuadraticSlice {
 		return `default`(size: NQuadraticIndex(rows, columns))
 	}
+	// protocol one
+	public func position(at index: NQuadraticIndex) -> Int {
+		return row.position(at: index.row) + column.position(at: index.column)
+	}
+	// simpler one
 	public func position(_ ar: Int, _ ac: Int) -> Int {
 		return row.position(at: ar) + column.position(at: ac)
 	}
