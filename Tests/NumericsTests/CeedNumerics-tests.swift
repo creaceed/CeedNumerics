@@ -8,7 +8,7 @@
 
 import XCTest
 import Foundation
-@testable import CeedNumerics
+@testable import Numerics
 
 let _tol: Double = 0.00001
 

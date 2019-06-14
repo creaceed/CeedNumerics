@@ -30,6 +30,7 @@ public protocol NDimensionalArray: NStorageAccessible, CustomStringConvertible {
 	init(storage: Storage, slice: NativeResolvedSlice)
 	
 	// we don't define as vararg arrays, we let that up to the actual type to opt-out from array use (performance).
+	// TODO: nextstep - genericize this
 	subscript(index: [Int]) -> Element { get nonmutating set }
 	subscript(index: NativeIndex) -> Element { get nonmutating set }
 	
