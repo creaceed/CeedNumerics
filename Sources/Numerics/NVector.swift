@@ -31,7 +31,7 @@ public struct NVector<Element: NValue> : NStorageAccessible, NDimensionalArray {
 	public var first: Element? { return size > 0 ? self[0] : nil }
 	public var last: Element? { return size > 0 ? self[size-1] : nil }
 	
-	// MARK: - Init -
+	// MARK: - Init
 	// NDArray init
 	public init(storage mem: Storage, slice sl: NResolvedSlice) {
 		storage = mem
@@ -62,7 +62,7 @@ public struct NVector<Element: NValue> : NStorageAccessible, NDimensionalArray {
 		return matrix
 	}
 	
-	// MARK: - Slicing -
+	// MARK: - Subscripts
 	// NDarray: Access one element
 	public subscript(index: [Int]) -> Element {
 		get { assert(index.count == 1); return self[index[0]] }
@@ -76,6 +76,10 @@ public struct NVector<Element: NValue> : NStorageAccessible, NDimensionalArray {
 	public subscript(_ s: NSliceExpression) -> Vector {
 		get { return Vector(storage: storage, slice: s.resolve(within: slice)) }
 		nonmutating set { Vector(storage: storage, slice: s.resolve(within: slice)).set(from: newValue) }
+	}
+	public subscript(_ s: NUnboundedSlice) -> Vector {
+		get { self[NSlice.all] }
+		nonmutating set { self[NSlice.all] = newValue }
 	}
 	
 	// Indexed access (Vector<Int>)
@@ -99,7 +103,7 @@ public struct NVector<Element: NValue> : NStorageAccessible, NDimensionalArray {
 		}
 	}
 	
-	
+	// MARK: - Storage
 	// Use Numerics.with variants as API
 	public func _withStorageAccess<Result>(_ block: (_ access: Storage.LinearAccess) throws -> Result) rethrows -> Result {
 		return try storage.withUnsafeAccess { saccess in

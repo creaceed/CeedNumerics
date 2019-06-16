@@ -7,6 +7,7 @@
 
 import Foundation
 
+// MARK: - Slice Expression
 // Unresolved one (needs shape to resolve). In NumPy,
 // <start:end:step> (end is excluded)
 // <2:> -> means <2 to end>.
@@ -62,6 +63,7 @@ extension NSliceExpression {
 	}
 }
 
+// MARK: - Slice
 // Concrete slice expression that can be created with all args
 public struct NSlice : NSliceExpression {
 	public let start: Int?
@@ -82,6 +84,7 @@ public struct NSlice : NSliceExpression {
 	
 }
 
+// MARK: - Slice Operators
 precedencegroup SliceOperatorPrecedence {
 	associativity: left
 	lowerThan: AdditionPrecedence
@@ -119,6 +122,17 @@ public postfix func ~~(a: Int) -> NSlice {
 	return NSlice(start: a, end: nil, step: nil)
 }
 
+// same as Swift's ... - see https://tonisuter.com/blog/2017/08/unbounded-ranges-swift-4/ for more
+public enum NUnboundedSlice_ {
+	public static postfix func ~ (_: NUnboundedSlice_) -> () {
+//		fatalError("uncallable")
+	}
+}
+public typealias NUnboundedSlice = (NUnboundedSlice_)->()
+// not possible (Swift 5.1), too bad. That would allow to have simpler subscripting funcs in types.
+//extension NUnboundedSlice : NSliceExpression {}
+
+// MARK: - Resolved Slice
 // N-Dimensional slice, abstraction is used to implement common  features in Matrix, Vector, etc.
 public protocol NDimensionalResolvedSlice: Sequence {
 	associatedtype NativeIndex
@@ -195,6 +209,7 @@ extension NResolvedSlice: Sequence {
 	}
 }
 
+// MARK: - Other
 extension Int: NDimensionalIndex {
 	public static var dimension: Int { return 1 }
 	// convert a 'size' index to an element count

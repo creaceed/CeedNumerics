@@ -93,6 +93,10 @@ class CeedNumerics_tests_mac: XCTestCase {
 		print("mat (after sliced set): \n\(mat)")
 		print("mat (transposed - compact): \n\(mat.transposed())")
 		print("mat (transposed - non-compact): \n\(mat[1...2, 1...2].transposed())")
+		print("mat (unbounded read): \n\(mat[~, 0~~])")
+		mat[~, 0~~] = 2.0*mat
+		print("mat (unbounded write): \n\(mat[~, 0~~])")
+		print("mat (unbounded 1st col): \n\(mat[~, 0])")
 		let i=2
 		mat[~i, (i-1)~].set(7.0)
 		print("mat (after sliced set): \n\(mat)")

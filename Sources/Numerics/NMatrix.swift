@@ -159,18 +159,29 @@ public struct NMatrix<Element: NValue> : NStorageAccessible, NDimensionalArray {
 		let rslice = NResolvedSlice(start: slice.position(index, 0), count: columns, step: slice.column.rstep)
 		return Vector(storage: storage, slice: rslice)
 	}
-	public subscript(row rindex: Int) -> Vector {
-		get { return row(at: rindex) }
-		nonmutating set { row(at: rindex).set(from: newValue) }
-	}
 	
 	private func column(at index: Int) -> Vector {
 		let cslice = NResolvedSlice(start: slice.position(0, index), count: rows, step: slice.row.rstep)
 		return Vector(storage: storage, slice: cslice)
 	}
+	// MARK: - Subscripts
+	
+	// Get subvector
+	public subscript(row rindex: Int) -> Vector {
+		get { return row(at: rindex) }
+		nonmutating set { row(at: rindex).set(from: newValue) }
+	}
 	public subscript(column col: Int) -> Vector {
 		get { return column(at: col) }
 		nonmutating set { column(at: col).set(from: newValue) }
+	}
+	public subscript(rindex: Int, colSlice: NSliceExpression) -> Vector {
+		get { return row(at: rindex)[colSlice] }
+		nonmutating set { row(at: rindex)[colSlice].set(from: newValue) }
+	}
+	public subscript(rowSlice: NSliceExpression, col: Int) -> Vector {
+		get { return column(at: col)[rowSlice] }
+		nonmutating set { column(at: col)[rowSlice].set(from: newValue) }
 	}
 	// Get submatrix
 	private func submatrix(_ rowSlice: NSliceExpression, _ colSlice: NSliceExpression) -> NMatrix<Element> {
@@ -185,6 +196,25 @@ public struct NMatrix<Element: NValue> : NStorageAccessible, NDimensionalArray {
 	public subscript(_ slice: (row: NSliceExpression, col: NSliceExpression)) -> Matrix {
 		get { return submatrix(slice.row, slice.col) }
 		nonmutating set { submatrix(slice.row, slice.col).set(from: newValue) }
+	}
+	
+	// Unbounded slicing (matrix/vector)
+	public subscript(_ unbounded: NUnboundedSlice, _ colSlice: NSliceExpression) -> Matrix {
+		get { self[NSlice.all, colSlice] }
+		nonmutating set { self[NSlice.all, colSlice] = newValue }
+	}
+	public subscript(_ rowSlice: NSliceExpression, _ unbounded: NUnboundedSlice) -> Matrix {
+		get { self[rowSlice, NSlice.all] }
+		nonmutating set { self[rowSlice, NSlice.all] = newValue }
+	}
+	// Unbounded slicing (vector)
+	public subscript(_ unbounded: NUnboundedSlice, _ col: Int) -> Vector {
+		get { self[NSlice.all, col] }
+		nonmutating set { self[NSlice.all, col] = newValue }
+	}
+	public subscript(_ row: Int, _ unbounded: NUnboundedSlice) -> Vector {
+		get { self[row, NSlice.all] }
+		nonmutating set { self[row, NSlice.all] = newValue }
 	}
 	
 	// Access one element
@@ -248,6 +278,11 @@ public struct NMatrix<Element: NValue> : NStorageAccessible, NDimensionalArray {
 		}
 	}
 	
+	public subscript(index: [Int]) -> Element {
+		get { assert(index.count == dimension); return self[index[0], index[1]] }
+		nonmutating set { assert(index.count == dimension); self[index[0], index[1]] = newValue }
+	}
+	// MARK: - Storage Access
 	// Entry point. Use Numerics.with variants as API
 	public func _withStorageAccess<Result>(_ block: (_ access: Storage.QuadraticAccess) throws -> Result) rethrows -> Result {
 		return try storage.withUnsafeAccess { saccess in
@@ -257,8 +292,4 @@ public struct NMatrix<Element: NValue> : NStorageAccessible, NDimensionalArray {
 		}
 	}
 	
-	public subscript(index: [Int]) -> Element {
-		get { assert(index.count == dimension); return self[index[0], index[1]] }
-		nonmutating set { assert(index.count == dimension); self[index[0], index[1]] = newValue }
-	}
 }
