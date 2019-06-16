@@ -78,7 +78,7 @@ public struct NVector<Element: NValue> : NStorageAccessible, NDimensionalArray {
 		nonmutating set { Vector(storage: storage, slice: s.resolve(within: slice)).set(from: newValue) }
 	}
 	public subscript(_ s: NUnboundedSlice) -> Vector {
-		get { self[NSlice.all] }
+		get { return self[NSlice.all] }
 		nonmutating set { self[NSlice.all] = newValue }
 	}
 	

@@ -200,20 +200,20 @@ public struct NMatrix<Element: NValue> : NStorageAccessible, NDimensionalArray {
 	
 	// Unbounded slicing (matrix/vector)
 	public subscript(_ unbounded: NUnboundedSlice, _ colSlice: NSliceExpression) -> Matrix {
-		get { self[NSlice.all, colSlice] }
+		get { return self[NSlice.all, colSlice] }
 		nonmutating set { self[NSlice.all, colSlice] = newValue }
 	}
 	public subscript(_ rowSlice: NSliceExpression, _ unbounded: NUnboundedSlice) -> Matrix {
-		get { self[rowSlice, NSlice.all] }
+		get { return self[rowSlice, NSlice.all] }
 		nonmutating set { self[rowSlice, NSlice.all] = newValue }
 	}
 	// Unbounded slicing (vector)
 	public subscript(_ unbounded: NUnboundedSlice, _ col: Int) -> Vector {
-		get { self[NSlice.all, col] }
+		get { return self[NSlice.all, col] }
 		nonmutating set { self[NSlice.all, col] = newValue }
 	}
 	public subscript(_ row: Int, _ unbounded: NUnboundedSlice) -> Vector {
-		get { self[row, NSlice.all] }
+		get { return self[row, NSlice.all] }
 		nonmutating set { self[row, NSlice.all] = newValue }
 	}
 	
