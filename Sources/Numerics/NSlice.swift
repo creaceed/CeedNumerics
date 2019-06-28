@@ -26,7 +26,6 @@ public protocol NSliceExpression {
 	var step: Int? { get }
 }
 extension NSliceExpression {
-//	static var all: NSlice { return NSlice.all }
 	public func resolve(size: Int) -> NResolvedSlice {
 		precondition(size > 0)
 		// not implemented

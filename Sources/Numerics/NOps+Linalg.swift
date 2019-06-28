@@ -130,7 +130,7 @@ extension Numerics where Element : NLinearSolverFloatingPoint {
 		let nrhs = b.columns
 		
 		let tB = Matrix(rows: b.columns, columns: max(tA.rows, tA.columns)) // warn: possibly larger than B
-		Numerics.transpose(b, tB[NSlice.all, 0..<b.rows])
+		Numerics.transpose(b, tB[~, 0..<b.rows])
 		
 		let res = try _inplaceSolveTransposed(tA: tA, tB: tB)
 		
