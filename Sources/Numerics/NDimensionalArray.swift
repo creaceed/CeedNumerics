@@ -124,6 +124,13 @@ extension NDimensionalArray {
 	}
 	
 	private func recursiveDescription(index: [Int]) -> String {
+		// invoked with [] to get the whole NDArray description
+		// if array has [3,2,3] size, with dimi[ convention, we get this
+		// 0[] -> 1[0] -> 2[0,0] -> 3[0,0,0] -> outputs a value
+		//                       -> 3[0,0,1] -> outputs a value
+		//                       -> 3[0,0,2] -> outputs a value
+		
+		
 		var description = ""
 		let dimi = index.count
 		var first: Bool = false, last = false
@@ -149,7 +156,8 @@ extension NDimensionalArray {
 		
 		if index.count > 0 {
 			if !last { description += "," }
-			if !last && dimi == shape.count - 1 { description += "\n" }
+			if !last && dimi == shape.count - 1 { description += "\n" } // on each 'vector"
+			if !last && dimi < shape.count - 1 { description += "\n\n" } // on higher dims
 			if last { description += "]" }
 		}
 		
@@ -213,6 +221,13 @@ extension NDimensionalArray where Element: Comparable {
 	public static func ==(lhs: Self, rhs: Element) -> Mask { return _compare(lhs: lhs, rhs: rhs, ==) }
 }
 
+extension NDimensionalArray where Element: NAdditiveNumeric {
+	public static func ramp(size: NativeIndex) -> Self {
+		let res = Self(size: size)
+		Numerics._setIndexRamp(res)
+		return res
+	}
+}
 
 // Randomisation
 extension NDimensionalArray {

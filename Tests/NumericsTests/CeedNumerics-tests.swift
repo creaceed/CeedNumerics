@@ -214,6 +214,18 @@ class CeedNumerics_tests_mac: XCTestCase {
 	}
 	
 	func testBasicTensors() {
+//		let tensor1 = NTensord(repeating: 1.0, size: [3,3,4])
+//		let tensor2 = NTensord(repeating: 0.2, size: [3,3,4])
+//		let tensor3 = Numerics.subtract(tensor1, tensor2)
+		
+		//let tensor1 = NTensord(repeating: 1.0, size: [3,3,4,3])
+		let tensor1 = NTensord.ramp(size: [3,3,4,3])
+		let tensor2 = NTensord(repeating: 0.2, size: [3,3,4,3])
+		let tensor3 = Numerics.subtract(tensor1, tensor2)
+		
+		print("tensor: \n\(tensor3)")
+		
+//		print("matrix: \n\(NMatrixd.ramp(size: NQuadraticIndex(4,5)))")
 //		let tensorA = Tensord(dimensions: [3,3,2], repeatedValue: 1.0)
 //		let slice = tensorA[1..<3, 1..<3, 0..<1]
 ////		let slice = tensorA[1..<3, 1..<3, 1..<2]

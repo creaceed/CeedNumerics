@@ -180,6 +180,52 @@ extension NStorage {
 			count = c
 		}
 	}
+	public struct GenericAccess: NDimensionalStorageAccess {
+		// points to the first element within the slice (slice's start)
+		public let base: UnsafeMutablePointer<Element>
+		
+		// navigate relatively to the first element.
+		
+		// stride: storage distance (elements) between elements in successive dimensions
+		public let stride: [Int]
+		// count: number of elements in each dimensions
+		public let count: [Int]
+		// Note: GenericAccess's slice always starts at 0 (unlike Tensor's)
+		public var slice: NResolvedGenericSlice {
+			let slices = zip(count, stride).map { NResolvedSlice(start: 0, count: $0.0, step: $0.1) }
+			return NResolvedGenericSlice(slices)
+		}
+		
+		public var compact: Bool { return slice.compact }
+		public var coalescable: Bool { return slice.coalesceable }
+		
+		public func linearized(coalesce: Bool) -> AnySequence<LinearAccess> {
+			if coalescable && coalesce {
+				let lin = LinearAccess(base: base, stride: stride.last!, count: count.reduce(1) { $0*$1 })
+				return AnySequence(CollectionOfOne(lin))
+			} else {
+				let higherdims = Array(count.prefix(upTo: count.count-1))
+				let higherstrides = Array(stride.prefix(upTo: count.count-1))
+				let range = NGenericIndexRange(counts: higherdims)
+				
+				let lins = range.lazy.map { (higherindex: NGenericIndex)->LinearAccess in
+					let baseoffset = zip(higherindex, higherstrides).reduce(0) { $0 + $1.0*$1.1 }
+					return LinearAccess(base: self.base+baseoffset, stride: self.stride.last!, count: self.count.last!)
+				}
+				
+				return AnySequence(lins)
+			}
+		}
+		
+		internal init(base b: UnsafeMutablePointer<Element>, stride s: [Int], count c: [Int]) {
+			precondition(s.count == c.count)
+			precondition(s.count > 0)
+			
+			base = b
+			stride = s
+			count = c
+		}
+	}
 }
 
 extension Numerics {

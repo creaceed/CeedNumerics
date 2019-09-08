@@ -16,3 +16,8 @@ public typealias NMatrixf = NMatrix<Float>
 public typealias NMatrixd = NMatrix<Double>
 public typealias NMatrixi = NMatrix<Int>
 public typealias NMatrixb = NMatrix<Bool>
+
+public typealias NTensorf = NTensor<Float>
+public typealias NTensord = NTensor<Double>
+public typealias NTensori = NTensor<Int>
+public typealias NTensorb = NTensor<Bool>

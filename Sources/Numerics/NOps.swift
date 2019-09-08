@@ -36,6 +36,17 @@ extension Numerics where Element: NAccelerateFloatingPoint {
 	public static func subtract<DT: NDimensionalArray>(_ a: DT, _ b: DT) -> DT where DT.Element == Element { return a._deriving { subtract(a, b, $0) } }
 }
 
+extension Numerics where Element: NAdditiveNumeric {
+	// debugging / testing
+	public static func _setIndexRamp<DT: NDimensionalArray>(_ a: DT) where DT.Element == Element {
+		var val: Element = .none
+		for index in a.indices {
+			a[index] = val
+			val += .one
+		}
+	}
+}
+
 
 // MARK: - Vector Ops
 extension Numerics where Element: NAccelerateFloatingPoint {

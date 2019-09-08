@@ -137,6 +137,7 @@ public protocol NDimensionalResolvedSlice: Sequence {
 	associatedtype NativeIndex
 	
 	static func `default`(size: NativeIndex) -> Self
+	var dimension: Int { get }
 	
 	func position(at index: NativeIndex) -> Int
 }
@@ -152,6 +153,7 @@ public struct NResolvedSlice: NSliceExpression, NDimensionalResolvedSlice {
 	public let rstep: Int // non zero. Can be negative.
 	public var rlast : Int { return rstart + (rcount - 1) * rstep }
 	public var rend : Int { return rstart + rcount * rstep }
+	public var dimension: Int { return 1 }
 	
 	public var start: Int? { return rstart }
 	public var end: Int? { return rend }
@@ -184,7 +186,7 @@ public struct NResolvedSlice: NSliceExpression, NDimensionalResolvedSlice {
 
 // Represents N-D indexes and sizes
 public protocol NDimensionalIndex: Equatable {
-	static var dimension: Int { get }
+	var dimension: Int { get } // not static because it cannot be inferred for generic indexes
 	
 	// when self represents a N-D size, this returns the total element count. E.g. 3x4 -> 12
 	var asElementCount: Int { get }
@@ -207,15 +209,14 @@ extension NResolvedSlice: Sequence {
 		return Swift.stride(from: rstart, to: rend, by: rstep).makeIterator()
 	}
 }
-
-// MARK: - Other
 extension Int: NDimensionalIndex {
-	public static var dimension: Int { return 1 }
+	public var dimension: Int { return 1 }
 	// convert a 'size' index to an element count
 	public var asElementCount: Int { return self }
 	public var asArray: [Int] { return [self] }
 }
 
+// MARK: - Quadratic Index / Slice
 public struct NQuadraticIndex: NDimensionalIndex {
 	public var row, column: Int
 	public init(_ r: Int, _ c: Int) {
@@ -224,7 +225,7 @@ public struct NQuadraticIndex: NDimensionalIndex {
 	}
 	public var tupleValue: (row: Int, column: Int) { return (row, column) }
 	
-	public static var dimension: Int { return 2 }
+	public var dimension: Int { return 2 }
 	public var asElementCount: Int { return row * column }
 	public var asArray: [Int] { return [row, column] } 
 }
@@ -233,6 +234,7 @@ public struct NResolvedQuadraticSlice: NDimensionalResolvedSlice {
 	public typealias NativeIndex = NQuadraticIndex
 	
 	public let row, column: NResolvedSlice
+	public var dimension: Int { return 2 }
 	// true if successive elements have no gap between them (including across dimensions)
 	public var compact: Bool {
 		// only positive steps are considered compact
@@ -488,6 +490,203 @@ extension NQuadraticIndexRange: QuadraticSequence {
 	}
 }
 */
+
+// MARK: - Generic Index / Slice
+//public struct NGenericIndex: NDimensionalIndex {
+//	public var components: [Int] // last one has smallest memory stride [row, col] for matrix (row major)
+//	public init(_ _values: [Int]) {
+//		components = _values
+//	}
+//	public var dimension: Int { return components.count }
+//	public var asElementCount: Int { return components.reduce(1) { $0 * $1 } }
+//	public var asArray: [Int] { return components }
+//}
+
+public typealias NGenericIndex = [Int]
+
+extension NGenericIndex: NDimensionalIndex {
+	public var dimension: Int { return count }
+	public var asElementCount: Int { return reduce(Int(1)) { $0 * $1 } }
+	public var asArray: [Int] { return self }
+	
+	public static func zero(dimension: Int) -> Self {
+		precondition(dimension > 0)
+		return NGenericIndex(repeating: 0, count: dimension)
+	}
+}
+
+// can't use typealias NResolvedGenericSlice = [NResolvedSlice], because Sequence impl is meant to iterate on index, not slices.
+public struct NResolvedGenericSlice: NDimensionalResolvedSlice {
+	public typealias NativeIndex = [Int]
+
+	public let components: [NResolvedSlice]
+	public var dimension: Int { return components.count }
+	// true if successive elements have no gap between them (including across dimensions)
+	public var compact: Bool {
+		// only positive steps are considered compact
+		var step = 1
+		for slice in components.reversed() {
+			if slice.rstep != step { return false }
+			step *= slice.rcount
+		}
+		return true
+		// matrix:
+		// return row.rstep == column.rcount && column.rstep == 1
+	}
+	// true if successive element are regularly distributed (including across dimensions)
+	public var coalesceable: Bool {
+		// single step can be used to traverse all values
+		var step = components.last!.rstep * components.last!.rcount
+		for slice in components.prefix(upTo: components.endIndex-1).reversed() {
+			if slice.rstep != step { return false }
+			step *= slice.rcount
+		}
+		return true
+		// matrix:
+		// return row.rstep == column.rcount * column.rstep
+	}
+
+	public init(_ comps: [NResolvedSlice]) {
+		precondition(comps.count > 0)
+		components = comps
+	}
+	
+	public static func `default`(size: NativeIndex) -> NResolvedGenericSlice {
+		precondition(size.count > 0)
+		precondition(size.startIndex == 0)
+		var steps = [Int](repeating: 0, count: size.count)
+		steps[steps.endIndex-1] = 1
+		for i in stride(from: size.endIndex-2, through: size.startIndex, by: -1) {
+			steps[i] = steps[i+1] * size[i+1]
+		}
+		
+		let comps = zip(size, steps).map { NResolvedSlice(start: 0, count: $0.0, step: $0.1) }
+		
+		return NResolvedGenericSlice(comps)
+		//return NResolvedQuadraticSlice(row: NResolvedSlice(start: 0, count: size.row, step: size.column),
+//									   column: .default(size: size.column))
+	}
+	public func position(at index: NativeIndex) -> Int {
+		components.enumerated().reduce(0) { $0 + $1.1.position(at: index[$1.0]) }
+		// matrix:
+		// return row.position(at: index.row) + column.position(at: index.column)
+	}
+}
+
+// Sequence impl.
+extension NResolvedGenericSlice {
+	public typealias Element = Int
+	public typealias Iterator =  NGenericSliceIterator
+
+	public func makeIterator() -> NGenericSliceIterator {
+		return NGenericSliceIterator(slice: self)
+	}
+}
+
+public struct NGenericSliceIterator: IteratorProtocol {
+	private let start: [Int]
+	private let step: [Int]
+	private let end: [Int]
+	// internal state
+	private var current: [Int]
+	private var done: Bool = false
+
+	public init(slice: NResolvedGenericSlice) {
+//		assert((slice.row.rend - slice.row.rstart) % slice.row.rstep == 0) // so that we can do exact comparison
+//		assert((slice.column.rend - slice.column.rstart) % slice.column.rstep == 0)
+//		assert(abs(slice.row.rstep) > 0)
+//		assert(abs(slice.column.rstep) > 0)
+
+		start = slice.components.map { $0.rstart }
+		step = slice.components.map { $0.rstep }
+		end = slice.components.map { $0.rend }
+		current = start
+		done = (start == end)
+	}
+
+	public mutating func next() -> Int? {
+		guard !done else { return nil }
+
+		// loc = sum()
+		let loc = current.reduce(0) { $0+$1 }
+		
+		for dimi in stride(from: start.count-1, through: 0, by: -1) {
+			current[dimi] += step[dimi]
+			if current[dimi] == end[dimi] {
+				// reset dimension, move to next dim
+				current[dimi] = start[dimi]
+				done = (dimi == 0)
+			} else {
+				break
+			}
+		}
+		
+		return loc
+	}
+}
+
+
+public struct NGenericIndexRange: Sequence {
+	public let counts: [Int]
+	public var dimension: Int { return counts.count }
+	public var ranges: [Range<Int>] { return counts.map { 0..<$0 } }
+	
+	public init(counts _counts: [Int]) {
+		precondition(_counts.count > 0)
+		
+		counts = _counts
+	}
+	public func makeIterator() -> NGenericIndexIterator {
+		return NGenericIndexIterator(start: [Int](repeating: 0, count: dimension),
+									 step: [Int](repeating: 1, count: dimension),
+									 end: counts)
+	}
+//	public func makeIterator() -> NQuadraticIndexIteratorVariant {
+//		return NQuadraticIndexIteratorVariant(sequence: self)
+//	}
+}
+
+public struct NGenericIndexIterator: IteratorProtocol {
+	private let start: [Int]
+	private let step: [Int]
+	private let end: [Int]
+	// internal state
+	private var current: [Int]
+	private var done: Bool = false
+	
+	public init(start astart: [Int], step astep: [Int], end aend: [Int]) {
+//		assert((aend.0 - astart.0) % astep.0 == 0)
+//		assert((aend.1 - astart.1) % astep.1 == 0)
+//		assert(abs(astep.0) > 0)
+//		assert(abs(astep.1) > 0)
+		
+		start = astart
+		step = astep
+		end = aend
+		current = astart
+		done = (astart == aend)
+	}
+	
+	public mutating func next() -> NGenericIndex? {
+		guard !done else { return nil }
+		
+		let loc = current
+		
+		for dimi in stride(from: start.count-1, through: 0, by: -1) {
+			current[dimi] += step[dimi]
+			if current[dimi] == end[dimi] {
+				// reset dimension, move to next dim
+				current[dimi] = start[dimi]
+				done = (dimi == 0)
+			} else {
+				break
+			}
+		}
+		return loc
+	}
+}
+
+
 // MARK: - Augmenting other types
 extension CountableRange: NSliceExpression where Bound == Int {
 	public var step: Int? { return 1 }
