@@ -23,7 +23,8 @@ public enum ConvolutionDomain {
 	// case full // M+K-1
 }
 
-// MARK: - Generic Dimensional Type Ops (apply to Vector, Matrix, Tensor)
+// MARK: - Generic Dimensional Type Ops
+// (apply to Vector, Matrix, Tensor)
 // Typically element-wise operations that can be implemented in terms to linearized access (any dimensions).
 extension Numerics where Element: NAccelerateFloatingPoint {
 	public static func subtract<DT: NDimensionalArray>(_ a: DT, _ b: DT, _ result: DT) where DT.Element == Element {
@@ -33,6 +34,52 @@ extension Numerics where Element: NAccelerateFloatingPoint {
 			Element.mx_vsub(aacc.base, aacc.stride, bacc.base, bacc.stride, racc.base, racc.stride, numericCast(racc.count))
 		}
 	}
+	
+	public static func mean<DT: NDimensionalArray>(_ a: DT) -> DT.Element where DT.Element == Element {
+		var mean: Element = 0.0
+		var c = 0
+		withLinearizedAccesses(a) { alin in
+			// possibly invoked multiple types
+			var lm: Element = 0.0
+			Element.mx_meanv(alin.base, alin.stride, C: &lm, numericCast(alin.count))
+			mean += lm
+			c += 1
+		}
+		return mean / Element(max(1,c))
+	}
+	public static func meanSquare<DT: NDimensionalArray>(_ a: DT) -> DT.Element where DT.Element == Element {
+		var mean: Element = 0.0
+		var c = 0
+		withLinearizedAccesses(a) { alin in
+			// possibly invoked multiple types
+			var lm: Element = 0.0
+			Element.mx_measqv(alin.base, alin.stride, C: &lm, numericCast(alin.count))
+			mean += lm
+			c += 1
+		}
+		return mean / Element(max(1,c))
+	}
+	public static func minimum<DT: NDimensionalArray>(_ a: DT) -> DT.Element where DT.Element == Element {
+		var m: Element = Element.infinity
+		withLinearizedAccesses(a) { alin in
+			// possibly invoked multiple types
+			var lm: Element = 0.0
+			Element.mx_minv(alin.base, alin.stride, C: &lm, numericCast(alin.count))
+			m = min(m, lm)
+		}
+		return m
+	}
+	public static func maximum<DT: NDimensionalArray>(_ a: DT) -> DT.Element where DT.Element == Element {
+		var m: Element = -Element.infinity
+		withLinearizedAccesses(a) { alin in
+			// possibly invoked multiple types
+			var lm: Element = 0.0
+			Element.mx_maxv(alin.base, alin.stride, C: &lm, numericCast(alin.count))
+			m = max(m, lm)
+		}
+		return m
+	}
+	
 	public static func subtract<DT: NDimensionalArray>(_ a: DT, _ b: DT) -> DT where DT.Element == Element { return a._deriving { subtract(a, b, $0) } }
 }
 
@@ -218,34 +265,6 @@ extension Numerics where Element: NAccelerateFloatingPoint {
 		result[0] = a[0]
 		return result
 	}
-	public static func mean(_ a: Vector) -> Element {
-		return withStorageAccess(a) { aacc in
-			var val: Element = .none
-			Element.mx_meanv(aacc.base, aacc.stride, C: &val, numericCast(aacc.count))
-			return val
-		}
-	}
-	public static func meanSquare(_ a: Vector) -> Element {
-		return withStorageAccess(a) { aacc in
-			var val: Element = .none
-			Element.mx_measqv(aacc.base, aacc.stride, C: &val, numericCast(aacc.count))
-			return val
-		}
-	}
-	public static func maximum(_ a: Vector) -> Element {
-		return withStorageAccess(a) { aacc in
-			var val = -Element.infinity
-			Element.mx_maxv(aacc.base, aacc.stride, C: &val, numericCast(aacc.count))
-			return val
-		}
-	}
-	public static func minimum(_ a: Vector) -> Element {
-		return withStorageAccess(a) { aacc in
-			var val = -Element.infinity
-			Element.mx_minv(aacc.base, aacc.stride, C: &val, numericCast(aacc.count))
-			return val
-		}
-	}
 }
 
 // MARK: - Vector: Deriving new ones + operators
@@ -325,26 +344,6 @@ extension Numerics where Element: NAccelerateFloatingPoint {
 			// possibly invoked multiple types
 			Element.mx_vsmul(alin.base, 1, b, rlin.base, 1, numericCast(alin.count))
 		}
-		
-//
-//		withStorageAccess(a) { aacc in
-//			withStorageAccess(result) { racc in
-//				if aacc.compact && racc.compact {
-//					assert(aacc.stride.column == 1); assert(aacc.stride.row == aacc.count.column)
-//					assert(racc.stride.column == 1); assert(racc.stride.row == racc.count.column)
-//
-//					Element.mx_vsmul(aacc.base, 1, b, racc.base, 1, numericCast(aacc.count.row * aacc.count.column))
-//
-//				} else {
-//					var lit = a._storageIterator()
-//					var rit = result._storageIterator()
-//
-//					while let pos = lit.next(), let rpos = rit.next() {
-//						racc.base[rpos] = aacc.base[pos] * b
-//					}
-//				}
-//			}
-//		}
 	}
 	// swap + deriving
 	public static func multiply(_ a: Element, _ b: Matrix, _ result: Matrix) { multiply(b, a, result) }
@@ -460,81 +459,6 @@ extension Numerics where Element: NAccelerateFloatingPoint {
 			}
 		}
 	}
-	public static func mean(_ a: Matrix) -> Element {
-		return withStorageAccess(a) { aacc in
-			if aacc.compact {
-				var val: Element = .none
-				Element.mx_meanv(aacc.base, 1, C: &val, numericCast(aacc.count.row * aacc.count.column))
-				return val
-			}
-			else {
-				var m: Element = 0.0
-				for i in 0..<aacc.count.row {
-					var lm: Element = 0.0
-					Element.mx_meanv(aacc.base + i*aacc.stride.row, aacc.stride.column, C: &lm, numericCast(aacc.count.column))
-					m += lm
-				}
-				m /= Element(aacc.count.row)
-				return m
-			}
-		}
-	}
-	public static func meanSquare(_ a: Matrix) -> Element {
-		return withStorageAccess(a) { aacc in
-			if aacc.compact {
-				var val: Element = .none
-				Element.mx_measqv(aacc.base, 1, C: &val, numericCast(aacc.count.row * aacc.count.column))
-				return val
-			}
-			else {
-				var m: Element = 0.0
-				for i in 0..<aacc.count.row {
-					var lm: Element = 0.0
-					Element.mx_measqv(aacc.base + i*aacc.stride.row, aacc.stride.column, C: &lm, numericCast(aacc.count.column))
-					m += lm
-				}
-				m /= Element(aacc.count.row)
-				return m
-			}
-		}
-	}
-	public static func minimum(_ a: Matrix) -> Element {
-		return withStorageAccess(a) { aacc in
-			if aacc.compact {
-				var val: Element = Element.infinity
-				Element.mx_minv(aacc.base, 1, C: &val, numericCast(aacc.count.row * aacc.count.column))
-				return val
-			}
-			else {
-				var m: Element = Element.infinity
-				for i in 0..<aacc.count.row {
-					var lm: Element = Element.infinity
-					Element.mx_minv(aacc.base + i*aacc.stride.row, aacc.stride.column, C: &lm, numericCast(aacc.count.column))
-					m = min(m, lm)
-				}
-				return m
-			}
-		}
-	}
-	public static func maximum(_ a: Matrix) -> Element {
-		return withStorageAccess(a) { aacc in
-			if aacc.compact {
-				var val: Element = -Element.infinity
-				Element.mx_maxv(aacc.base, 1, C: &val, numericCast(aacc.count.row * aacc.count.column))
-				return val
-			}
-			else {
-				var m: Element = -Element.infinity
-				for i in 0..<aacc.count.row {
-					var lm: Element = -Element.infinity
-					Element.mx_maxv(aacc.base + i*aacc.stride.row, aacc.stride.column, C: &lm, numericCast(aacc.count.column))
-					m = max(m, lm)
-				}
-				return m
-			}
-		}
-	}
-	
 }
 
 extension Numerics where Element == Float {

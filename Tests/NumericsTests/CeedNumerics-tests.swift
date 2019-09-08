@@ -12,15 +12,26 @@ import Foundation
 
 let _tol: Double = 0.00001
 
-func equals<E: NValue>(_ lhs: NVector<E>, _ rhs: NVector<E>) -> Bool where E: NFloatingPoint {
-	let tolerance: E = 0.00001
-	return lhs.isEqual(to: rhs, tolerance: tolerance)
+
+func equals<E: NFloatingPoint>(_ lhs: E, _ rhs: E) -> Bool {
+	let tolerance: E = E(_tol)
+	return abs(rhs - lhs) <= tolerance
 }
 
-func equals<E: NValue>(_ lhs: NMatrix<E>, _ rhs: NMatrix<E>) -> Bool where E: NFloatingPoint {
-	let tolerance: E = 0.00001
+func equals<DT: NDimensionalArray>(_ lhs: DT, _ rhs: DT) -> Bool where DT.Element: NFloatingPoint {
+	let tolerance: DT.Element = DT.Element(_tol)
 	return lhs.isEqual(to: rhs, tolerance: tolerance)
 }
+//
+//func equals<E: NValue>(_ lhs: NVector<E>, _ rhs: NVector<E>) -> Bool where E: NFloatingPoint {
+//	let tolerance: E = E(_tol)
+//	return lhs.isEqual(to: rhs, tolerance: tolerance)
+//}
+//
+//func equals<E: NValue>(_ lhs: NMatrix<E>, _ rhs: NMatrix<E>) -> Bool where E: NFloatingPoint {
+//	let tolerance: E = E(_tol)
+//	return lhs.isEqual(to: rhs, tolerance: tolerance)
+//}
 
 func printHeader(_ header: String) {
 	print("\n\n\n*** \(header) ***")
@@ -103,6 +114,48 @@ class CeedNumerics_tests_mac: XCTestCase {
 		
 		let linv = Numerics.linspace(start: 0.0, stop: 10.0, count: 10)
 		print("linspace: \n\(linv)")
+	}
+	
+	func testOps() {
+		let tensor = NTensord.ramp(size: [3,3,3])
+		let matrix = NMatrixd.ramp(size: NQuadraticIndex(3,3))
+		let vector = NVectord.ramp(size: 3)
+		
+		let tmean = Numerics.mean(tensor)
+		let mmean = Numerics.mean(matrix)
+		let vmean = Numerics.mean(vector)
+		
+		print("tensor: \(tensor)\nmean: \(tmean)")
+		print("matrix: \(matrix)\nmean: \(mmean)")//" \((0..<9).reduce(0.0) {$0 + Double($1*$1)}/9.0)")
+		print("vector: \(vector)\nmean: \(vmean)")
+		
+		XCTAssert(equals(tmean, 13.0))
+		XCTAssert(equals(mmean, 4.0))
+		XCTAssert(equals(vmean, 1.0))
+		
+		let tmean2 = Numerics.meanSquare(tensor)
+		let mmean2 = Numerics.meanSquare(matrix)
+		let vmean2 = Numerics.meanSquare(vector)
+		
+		print("tensor mean 2: \(tmean2)")
+		print("matrix mean 2: \(mmean2)")
+		print("vector mean 2: \(vmean2)")
+//
+		XCTAssert(equals(tmean2, 229.666666))
+		XCTAssert(equals(mmean2, 22.666666))
+		XCTAssert(equals(vmean2, 1.666666))
+		
+		let (tmin, tmax) = (Numerics.minimum(tensor), Numerics.maximum(tensor))
+		let (mmin, mmax) = (Numerics.minimum(matrix), Numerics.maximum(matrix))
+		let (vmin, vmax) = (Numerics.minimum(vector), Numerics.maximum(vector))
+		
+		print("tensor min/max: \(tmin) \(tmax)")
+		print("matrix min/max: \(mmin) \(mmax)")
+		print("vector min/max: \(vmin) \(vmax)")
+		
+		XCTAssert(equals(tmin, 0.0) && equals(tmax, 26.0))
+		XCTAssert(equals(mmin, 0.0) && equals(mmax, 8.0))
+		XCTAssert(equals(vmin, 0.0) && equals(vmax, 2.0))
 	}
 	
 	func testDimensionality() {
