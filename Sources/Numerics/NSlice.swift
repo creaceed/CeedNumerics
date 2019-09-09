@@ -509,7 +509,7 @@ extension NGenericIndex: NDimensionalIndex {
 	public var asElementCount: Int { return reduce(Int(1)) { $0 * $1 } }
 	public var asArray: [Int] { return self }
 	
-	public static func zero(dimension: Int) -> Self {
+	public static func zero(dimension: Int) -> NGenericIndex {
 		precondition(dimension > 0)
 		return NGenericIndex(repeating: 0, count: dimension)
 	}
@@ -567,7 +567,7 @@ public struct NResolvedGenericSlice: NDimensionalResolvedSlice {
 //									   column: .default(size: size.column))
 	}
 	public func position(at index: NativeIndex) -> Int {
-		components.enumerated().reduce(0) { $0 + $1.1.position(at: index[$1.0]) }
+		return components.enumerated().reduce(0) { $0 + $1.1.position(at: index[$1.0]) }
 		// matrix:
 		// return row.position(at: index.row) + column.position(at: index.column)
 	}
