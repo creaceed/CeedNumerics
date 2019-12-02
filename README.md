@@ -4,11 +4,11 @@
 
 CeedNumerics is a numerical representation and computation library written in Swift. It defines arbitrarily sized vector, matrix, and tensor types as well as implementation of abstractions and common methods for operating on those types. Inspired by NumPy and other similar numerical packages, it has been modeled to take advantage of Swift's strong typing and other unique language features.
 
-```
+``` Swift
 import Numerics
 
 let mat: NMatrixd = .init([1.0, 2.0],
-						  [1.0,-3.0])
+			  [1.0,-3.0])
 let vec: NVectord = .init([0.5,-1.0])
 
 let res: NVectord = mat.transposed() * vec
@@ -46,13 +46,13 @@ Even though CeedNumerics defines all of its dimensional types as generics (for i
 
 For instance, in our CeedColorimetry and CeedOCR libraries, we start off with these definitions:
 
-```
+``` Swift
 public typealias ColorScalar = Double
 public typealias ColorMatrix = NMatrix<ColorScalar>
 public typealias ColorTemperature = ColorScalar
 ```
 
-```
+``` Swift
 public typealias OcrScalar = Double
 public typealias OcrMatrix = NMatrix<OcrScalar>
 ```
@@ -70,7 +70,7 @@ Even though we are using CeedNumerics in our own apps, CeedNumerics is probably 
 
 Swift Numerics Links
 - Announcement: https://swift.org/blog/numerics
-- Swift Forums: 
+- Swift Forums: https://forums.swift.org/c/related-projects/swift-numerics
 
 These other projects propose alternate representations:
 - Surge: https://github.com/Jounce/Surge
