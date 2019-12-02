@@ -22,7 +22,7 @@ CeedNumerics proposes an abstraction for dimensional types that is different fro
 
 Interacting with data with simple yet powerful syntax is at the core of the library. A slice allows to access a subset of a larger variable by specifying both a range and a stride for each dimension. In 2D (matrix), it looks like this, where matrix B is defined as a slice of matric A:
 
-<p align="center"><img src="" width="75%"></p>
+<p align="center"><img src="https://user-images.githubusercontent.com/369828/69978689-2ebbe980-152d-11ea-857e-831dfc594843.png" width="75%"></p>
 
 The '~' is used as the more classical ':' is not available at this time in Swift.
 
