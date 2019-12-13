@@ -81,6 +81,16 @@ public struct NVector<Element: NValue> : NStorageAccessible, NDimensionalArray {
 		return matrix
 	}
 	
+	public func asArray() -> [Element] {
+		var i=0
+		var array: [Element] = .init(repeating: .none, count: self.size)
+		Numerics.withValues(self) {
+			array[i] = $0
+			i += 1
+		}
+		return array
+	}
+	
 	// MARK: - Subscripts
 	// NDarray: Access one element
 	public subscript(index: [Int]) -> Element {

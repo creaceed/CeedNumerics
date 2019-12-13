@@ -59,9 +59,9 @@ extension Numerics where Element: NLinearSolverFloatingPoint {
 	public static func polyfit(x: Vector, y: Vector, degree: Int) throws -> Vector {
 		precondition(degree > 0)
 		let dx = x.copy()
-		let X = Numerics.zeros(rows: x.size, columns: degree+1)
+		let X = Matrix.zeros(rows: x.size, columns: degree+1)
 		
-		X[column: 0] = Numerics.ones(count: X.rows)
+		X[column: 0] = Vector.ones(count: X.rows)
 		for d in 1..<degree+1 {
 			X[column: d] = dx
 			dx *= x
