@@ -156,7 +156,9 @@ public protocol NDimensionalResolvedSlice: Sequence {
 	associatedtype NativeIndex
 	
 	static func `default`(size: NativeIndex) -> Self
-	var dimension: Int { get }
+	var rank: Int { get }
+	var steps: [Int] { get }
+	var shape: [Int] { get }
 	
 	func position(at index: NativeIndex) -> Int
 }
@@ -172,7 +174,11 @@ public struct NResolvedSlice: NSliceExpression, NDimensionalResolvedSlice {
 	public let rstep: Int // non zero. Can be negative.
 	public var rlast : Int { return rstart + (rcount - 1) * rstep }
 	public var rend : Int { return rstart + rcount * rstep }
-	public var dimension: Int { return 1 }
+	
+	public var rank: Int { return 1 }
+	public var shape: [Int] { return [rcount] }
+	public var steps: [Int] { return [rstep] }
+	
 	
 	public var start: Int? { return rstart }
 	public var end: Int? { return rend }
@@ -205,7 +211,7 @@ public struct NResolvedSlice: NSliceExpression, NDimensionalResolvedSlice {
 
 // Represents N-D indexes and sizes
 public protocol NDimensionalIndex: Equatable {
-	var dimension: Int { get } // not static because it cannot be inferred for generic indexes
+	var rank: Int { get } // not static because it cannot be inferred for generic indexes
 	
 	// when self represents a N-D size, this returns the total element count. E.g. 3x4 -> 12
 	var asElementCount: Int { get }
@@ -229,7 +235,7 @@ extension NResolvedSlice: Sequence {
 	}
 }
 extension Int: NDimensionalIndex {
-	public var dimension: Int { return 1 }
+	public var rank: Int { return 1 }
 	// convert a 'size' index to an element count
 	public var asElementCount: Int { return self }
 	public var asArray: [Int] { return [self] }
@@ -244,7 +250,7 @@ public struct NQuadraticIndex: NDimensionalIndex {
 	}
 	public var tupleValue: (row: Int, column: Int) { return (row, column) }
 	
-	public var dimension: Int { return 2 }
+	public var rank: Int { return 2 }
 	public var asElementCount: Int { return row * column }
 	public var asArray: [Int] { return [row, column] } 
 }
@@ -253,7 +259,10 @@ public struct NResolvedQuadraticSlice: NDimensionalResolvedSlice {
 	public typealias NativeIndex = NQuadraticIndex
 	
 	public let row, column: NResolvedSlice
-	public var dimension: Int { return 2 }
+	public var rank: Int { return 2 }
+	public var shape: [Int] { return [row.rcount, column.rcount] }
+	public var steps: [Int] { return [row.rstep, column.rstep] }
+	
 	// true if successive elements have no gap between them (including across dimensions)
 	public var compact: Bool {
 		// only positive steps are considered compact
@@ -332,24 +341,29 @@ public struct NQuadraticSliceIterator: IteratorProtocol {
 	}
 }
 
-public struct NQuadraticIndexRange: Sequence {
-	public let rows, columns: Int
-	public var row: Range<Int> { return 0..<rows }
-	public var column: Range<Int> { return 0..<columns }
+public struct NQuadraticRange: Sequence {
+	public var rows: Int { return row.count }
+	public var columns: Int { return column.count }
+	public let row: Range<Int>
+	public let column: Range<Int>
+	
+	public init(row ar: Range<Int>, column ac: Range<Int>) {
+		row = ar
+		column = ac
+	}
 	
 	public init(rows ar: Int, columns ac: Int) {
-		rows = ar
-		columns = ac
+		self.init(row: 0..<ar, column: 0..<ac)
 	}
-	public func makeIterator() -> NQuadraticIndexIterator {
-		return NQuadraticIndexIterator(start: (0,0), step: (1,1), end: (rows, columns))
+	public func makeIterator() -> NQuadraticIterator {
+		return NQuadraticIterator(start: (row.lowerBound, column.lowerBound), step: (1,1), end: (row.upperBound, column.upperBound))
 	}
-//	public func makeIterator() -> NQuadraticIndexIteratorVariant {
-//		return NQuadraticIndexIteratorVariant(sequence: self)
+//	public func makeIterator() -> NQuadraticIteratorVariant {
+//		return NQuadraticIteratorVariant(sequence: self)
 //	}
 }
 
-public struct NQuadraticIndexIterator: IteratorProtocol {
+public struct NQuadraticIterator: IteratorProtocol {
 	private let start: (row: Int, column: Int)
 	private let step: (row: Int, column: Int)
 	private let end: (row: Int, column: Int)
@@ -386,14 +400,14 @@ public struct NQuadraticIndexIterator: IteratorProtocol {
 
 // Variant to test generic implementation on known type (same code, but it's faster)
 /*
-public struct NQuadraticIndexIteratorVariant: IteratorProtocol {
-	let sequence: NQuadraticIndexRange
+public struct NQuadraticIteratorVariant: IteratorProtocol {
+	let sequence: NQuadraticRange
 	var iterators: (Range<Int>.Iterator, Range<Int>.Iterator)
 	var current: (Int, Int)
 	var done: Bool
 	//	var combined: Element
 
-	init(sequence s: NQuadraticIndexRange) {
+	init(sequence s: NQuadraticRange) {
 		sequence = s
 		iterators = (sequence.row.makeIterator(), sequence.column.makeIterator())
 
@@ -499,10 +513,10 @@ extension NResolvedQuadraticSlice: QuadraticSequence {
 		return r+c
 	}
 }
-extension NQuadraticIndexRange: QuadraticSequence {
+extension NQuadraticRange: QuadraticSequence {
 	public typealias Element = (Int, Int)
 	public typealias LinearSequence = Range<Int>
-	public typealias Iterator = QuadraticIterator<NQuadraticIndexRange>
+	public typealias Iterator = QuadraticIterator<NQuadraticRange>
 	public var sequences: (Range<Int>, Range<Int>) { return (row, column) }
 	public static func combineDimensions(_ r: Int, _ c: Int) -> (Int, Int) {
 		return (r,c)
@@ -524,13 +538,13 @@ extension NQuadraticIndexRange: QuadraticSequence {
 public typealias NGenericIndex = [Int]
 
 extension NGenericIndex: NDimensionalIndex {
-	public var dimension: Int { return count }
+	public var rank: Int { return count }
 	public var asElementCount: Int { return reduce(Int(1)) { $0 * $1 } }
 	public var asArray: [Int] { return self }
 	
-	public static func zero(dimension: Int) -> NGenericIndex {
-		precondition(dimension > 0)
-		return NGenericIndex(repeating: 0, count: dimension)
+	public static func zero(rank: Int) -> NGenericIndex {
+		precondition(rank > 0)
+		return NGenericIndex(repeating: 0, count: rank)
 	}
 }
 
@@ -539,7 +553,9 @@ public struct NResolvedGenericSlice: NDimensionalResolvedSlice {
 	public typealias NativeIndex = [Int]
 
 	public let components: [NResolvedSlice]
-	public var dimension: Int { return components.count }
+	public var rank: Int { return components.count }
+	public var shape: [Int] { return components.map { $0.rcount } }
+	public var steps: [Int] { return components.map { $0.rstep } }
 	// true if successive elements have no gap between them (including across dimensions)
 	public var compact: Bool {
 		// only positive steps are considered compact
@@ -645,27 +661,28 @@ public struct NGenericSliceIterator: IteratorProtocol {
 }
 
 
-public struct NGenericIndexRange: Sequence {
-	public let counts: [Int]
-	public var dimension: Int { return counts.count }
-	public var ranges: [Range<Int>] { return counts.map { 0..<$0 } }
+public struct NGenericRange: Sequence {
+	public var counts: [Int] { return ranges.map { $0.count } }
+	public var rank: Int { return ranges.count }
+	public let ranges: [Range<Int>] // { return counts.map { 0..<$0 } }
 	
+	public init(ranges _ranges: [Range<Int>]) {
+		ranges = _ranges
+	}
 	public init(counts _counts: [Int]) {
-		precondition(_counts.count > 0)
-		
-		counts = _counts
+		self.init(ranges: _counts.map { 0..<$0 } )
 	}
-	public func makeIterator() -> NGenericIndexIterator {
-		return NGenericIndexIterator(start: [Int](repeating: 0, count: dimension),
-									 step: [Int](repeating: 1, count: dimension),
-									 end: counts)
+	public func makeIterator() -> NGenericIterator {
+		return NGenericIterator(start: ranges.map { $0.lowerBound },
+									 step: [Int](repeating: 1, count: rank),
+									 end: ranges.map { $0.upperBound })
 	}
-//	public func makeIterator() -> NQuadraticIndexIteratorVariant {
-//		return NQuadraticIndexIteratorVariant(sequence: self)
+//	public func makeIterator() -> NQuadraticIteratorVariant {
+//		return NQuadraticIteratorVariant(sequence: self)
 //	}
 }
 
-public struct NGenericIndexIterator: IteratorProtocol {
+public struct NGenericIterator: IteratorProtocol {
 	private let start: [Int]
 	private let step: [Int]
 	private let end: [Int]

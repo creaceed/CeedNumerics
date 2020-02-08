@@ -110,6 +110,15 @@ extension Int: NValue, NAdditiveNumeric {
 		return Int.random(in: min...max, using: &generator)
 	}
 }
+extension UInt16: NValue, NAdditiveNumeric {
+	public var descriptionValueString : String { return String(format: "%6d", self) }
+	public static var none: Self { return 0 }
+	public static var one: Self { return 1 }
+	public static func random<G: RandomNumberGenerator>(min: Self, max: Self, using generator: inout G) -> Self {
+		return Self.random(in: min...max, using: &generator)
+	}
+}
+
 extension Bool: NValue {
 	public var descriptionValueString: String { return "\(self)" }
 	public static var none: Bool { return false }
@@ -118,3 +127,6 @@ extension Bool: NValue {
 		return Bool.random(using: &generator)
 	}
 }
+
+// Float16 can't be directly accessed, and they are modeled as UInt16 (CPU-side)
+public typealias NOpaqueFloat16 = UInt16

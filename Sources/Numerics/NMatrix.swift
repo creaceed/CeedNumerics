@@ -35,27 +35,27 @@ public struct NMatrix<Element: NValue> : NStorageAccessible, NDimensionalArray {
 	public typealias Element = Element
 	public typealias NativeResolvedSlice = NResolvedQuadraticSlice
 	public typealias NativeIndex = NativeResolvedSlice.NativeIndex // NQuadraticIndex
-	public typealias NativeIndexRange = NQuadraticIndexRange
+	public typealias NativeRange = NQuadraticRange
 	public typealias Vector = NVector<Element>
 	public typealias Matrix = NMatrix<Element>
 	public typealias Storage = NStorage<Element>
 	public typealias Access = Storage.QuadraticAccess
 	
-	private let storage: Storage
+	public let storage: Storage
 	// orthogonal - slices.rows does not account any column offset (which is entirely expressed through slices.column)
 	// accessing memory requires both slices to be evaluated (and added).
 	// Note: slice.position(_,_) can be used as storage[_] subscript. However, when using storage access (QuadraticAccess),
 	// use its own slice position (access.slice.position) to address its .base pointer, as it removes offset
-	private let slice: NResolvedQuadraticSlice
+	public let slice: NResolvedQuadraticSlice
 	
 	// Conformance to NDArray
-	public var dimension: Int { return 2 }
+	public var rank: Int { return 2 } // tensor meaning (not a matrix's rank)
 	public var rows: Int { return slice.row.rcount }
 	public var columns: Int { return slice.column.rcount }
 //	public var width: Int { return columns }
 //	public var height: Int { return rows }
 	public var size: NativeIndex { return NQuadraticIndex(rows, columns) }
-	public var indices: NQuadraticIndexRange { return NQuadraticIndexRange(rows: rows, columns: columns) }
+	public var indices: NQuadraticRange { return NQuadraticRange(rows: rows, columns: columns) }
 	public var compact: Bool { return slice.compact }
 	public var coalesceable: Bool { return slice.coalesceable }
 	
@@ -298,8 +298,8 @@ public struct NMatrix<Element: NValue> : NStorageAccessible, NDimensionalArray {
 	}
 	
 	public subscript(index: [Int]) -> Element {
-		get { assert(index.count == dimension); return self[index[0], index[1]] }
-		nonmutating set { assert(index.count == dimension); self[index[0], index[1]] = newValue }
+		get { assert(index.count == rank); return self[index[0], index[1]] }
+		nonmutating set { assert(index.count == rank); self[index[0], index[1]] = newValue }
 	}
 	// MARK: - Storage Access
 	// Entry point. Use Numerics.with variants as API

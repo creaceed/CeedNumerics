@@ -245,4 +245,13 @@ public extension NStorage.QuadraticAccess where Element == Float {
 	}
 }
 
+public extension NDimensionalStorageAccess {
+	var compactBufferAsVImage: vImage_Buffer? {
+		guard let buf = compactBuffer else { return nil }
+		
+		let bpe = MemoryLayout<Element>.stride
+		return vImage_Buffer(data: buf.baseAddress, height: 1, width: numericCast(buf.count), rowBytes: bpe * buf.count)
+	}
+}
+
 //ivim =

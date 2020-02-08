@@ -34,19 +34,19 @@ public struct NTensor<Element: NValue> : NStorageAccessible, NDimensionalArray {
 	public typealias Element = Element
 	public typealias NativeResolvedSlice = NResolvedGenericSlice
 	public typealias NativeIndex = NResolvedGenericSlice.NativeIndex // NGenericIndex = [Int]
-	public typealias NativeIndexRange = NGenericIndexRange
+	public typealias NativeRange = NGenericRange
 	public typealias Vector = NVector<Element>
 	public typealias Matrix = NMatrix<Element>
 	public typealias Storage = NStorage<Element>
 	public typealias Access = Storage.GenericAccess
 	
-	private let storage: Storage
-	private let slice: NResolvedGenericSlice
+	public let storage: Storage
+	public let slice: NResolvedGenericSlice
 	
 	// Conformance to NDArray
-	public var dimension: Int { return slice.dimension }
+	public var rank: Int { return slice.rank }
 	public var size: NativeIndex { return slice.components.map { $0.rcount } }
-	public var indices: NGenericIndexRange { return NGenericIndexRange(counts: size) }
+	public var indices: NGenericRange { return NGenericRange(counts: size) }
 	public var compact: Bool { return slice.compact }
 	public var coalesceable: Bool { return slice.coalesceable }
 	
@@ -64,12 +64,35 @@ public struct NTensor<Element: NValue> : NStorageAccessible, NDimensionalArray {
 		get { return storage[slice.position(at: index)] }
 		nonmutating set { storage[slice.position(at: index)] = newValue }
 	}
+	public subscript(_ indexes: Int...) -> Element {
+		get { return self[indexes] }
+		nonmutating set { self[indexes] = newValue }
+	}
+	
+	// Get subtensor
+	private func subtensor(_ dimSlices: [NSliceExpression]) -> Self {
+		// note: at this time we only support NSliceExpression, and arg count sould be equal to
+		// receiver rank. But, both constraints can later be removed with Any... to provide
+		// more flexible tensor subscripting (at the cost of performances, but that's OK)
+		
+		precondition(dimSlices.count == rank)
+		
+		let resolvedSlices: [NResolvedSlice] = zip(dimSlices, slice.components).map { $0.0.resolve(within: $0.1) }
+		let s = NResolvedGenericSlice(resolvedSlices)
+		
+		return Self(storage: storage, slice: s)
+//		return NMatrix<Element>(storage: storage, slices: (rslice, cslice))
+	}
+	public subscript(_ dimSlices: NSliceExpression...) -> Self {
+		get { return subtensor(dimSlices) }
+		nonmutating set { subtensor(dimSlices).set(from: newValue) }
+	}
 	
 	// MARK: - Storage Access
 	// Entry point. Use Numerics.with variants as API
 	public func _withStorageAccess<Result>(_ block: (_ access: Access) throws -> Result) rethrows -> Result {
 		return try storage.withUnsafeAccess { saccess in
-			let base = saccess.base + slice.position(at: NGenericIndex.zero(dimension:dimension))
+			let base = saccess.base + slice.position(at: NGenericIndex.zero(rank:rank))
 			let access = Storage.GenericAccess(base: base, stride: slice.components.map { $0.rstep }, count: slice.components.map { $0.rcount })
 			return try block(access)
 		}

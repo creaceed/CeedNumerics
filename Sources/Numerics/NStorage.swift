@@ -41,10 +41,18 @@ public protocol NMutableStorage: NStorage {
 // of linear segments. Useful for instance if you want to add 1.0 to each element of a matrix.
 public protocol NDimensionalStorageAccess {
 	associatedtype Element: NValue
+	associatedtype Slice: NDimensionalResolvedSlice
 	typealias Storage = NStorage<Element>
 	
 	var compact: Bool { get }
 	var coalescable: Bool { get }
+	var base: UnsafeMutablePointer<Element> { get }// pointer to the first
+	var slice: Slice { get }
+	
+	// we could have generic layout capability
+//	var genericStrides: [Int]
+//	var genericCounts: [Int]
+	var compactBuffer: UnsafeMutableBufferPointer<Element>?  { get } // only avail if compact
 	
 	// traverse storage as successive linear segments (typically rows in a matrix).
 	// If coalesce is false, traverses contents in row-major order.
@@ -79,6 +87,8 @@ public protocol NStorageAccessible  {
 //
 public class NStorage<Element: NValue> {
 	private let pointer: UnsafeMutablePointer<Element>
+	private let allocated: Bool
+	private let owner: AnyObject?
 	public let count: Int
 	
 	public var rawData: Data {
@@ -91,14 +101,21 @@ public class NStorage<Element: NValue> {
 		pointer = UnsafeMutablePointer.allocate(capacity: allocatedCount)
 		pointer.initialize(repeating: value, count: allocatedCount)
 		count = allocatedCount
+		allocated = true
+		owner = nil
 	}
 	
 	deinit {
-		pointer.deallocate()
+		if allocated {
+			pointer.deallocate()
+		}
 	}
-	public init(externalReference: UnsafeMutablePointer<Element>, count c: Int) {
+	// owner is used as keep-alive for memory.
+	public init(existingPointer: UnsafeMutablePointer<Element>, owner ow: AnyObject?, count c: Int) {
 		count = c
-		pointer = externalReference
+		pointer = existingPointer
+		allocated = false
+		owner = ow
 	}
 	
 	public subscript(index: Int) -> Element {
@@ -137,6 +154,10 @@ extension NStorage {
 		
 		public var compact: Bool { return stride == 1 }
 		public var coalescable: Bool { return true }
+		public var compactBuffer: UnsafeMutableBufferPointer<Element>? {
+			guard compact else { return nil }
+			return UnsafeMutableBufferPointer(start: base, count: count)
+		}
 		
 		public var indexes: StrideTo<Int> { return Swift.stride(from: 0, to: end, by: stride) }
 		public var pointers: StrideTo<UnsafeMutablePointer<Element>> { return Swift.stride(from: base, to: base+end, by: stride) }
@@ -171,6 +192,10 @@ extension NStorage {
 		
 		public var compact: Bool { return slice.compact }
 		public var coalescable: Bool { return slice.coalesceable }
+		public var compactBuffer: UnsafeMutableBufferPointer<Element>? {
+			guard compact else { return nil }
+			return UnsafeMutableBufferPointer(start: base, count: count.row * count.column)
+		}
 		
 		// points to the first element of row or columns
 		public func base(row: Int) -> UnsafeMutablePointer<Element> { return base + row * stride.row }
@@ -217,6 +242,10 @@ extension NStorage {
 		
 		public var compact: Bool { return slice.compact }
 		public var coalescable: Bool { return slice.coalesceable }
+		public var compactBuffer: UnsafeMutableBufferPointer<Element>? {
+			guard compact else { return nil }
+			return UnsafeMutableBufferPointer(start: base, count: count.reduce(1, *))
+		}
 		
 		public func linearized(coalesce: Bool) -> AnySequence<LinearAccess> {
 			if coalescable && coalesce {
@@ -225,7 +254,7 @@ extension NStorage {
 			} else {
 				let higherdims = Array(count.prefix(upTo: count.count-1))
 				let higherstrides = Array(stride.prefix(upTo: count.count-1))
-				let range = NGenericIndexRange(counts: higherdims)
+				let range = NGenericRange(counts: higherdims)
 				
 				let lins = range.lazy.map { (higherindex: NGenericIndex)->LinearAccess in
 					let baseoffset = zip(higherindex, higherstrides).reduce(0) { $0 + $1.0*$1.1 }
@@ -254,7 +283,7 @@ extension Numerics {
 			return try access(acc)
 		}
 	}
-	public static func withStorageAccess<T: NStorageAccessible, Result>(_ a: T, _ b: T, _ access: (_ aa: T.Access, _ ba: T.Access) throws -> Result) rethrows -> Result where T.Element == Element {
+	public static func withStorageAccess<T: NStorageAccessible, T2: NStorageAccessible, Result>(_ a: T, _ b: T2, _ access: (_ aa: T.Access, _ ba: T2.Access) throws -> Result) rethrows -> Result where T.Element == Element {
 		return try a._withStorageAccess { acc in
 			return try b._withStorageAccess { bacc in
 				return try access(acc, bacc)

@@ -26,17 +26,25 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import Foundation
 
+// TODO list for NDimensionalArray:
+// - unify steps / strides concepts into strides + canonical steps / define compact form (H*W,W,1)
+// - implement 'soft' transpose API using strides/counts swapping
+// - implement transpose baking with copy API (or another specific one).
+
 public protocol NDimensionalArray: NStorageAccessible, CustomStringConvertible {
-	associatedtype NativeIndexRange: Sequence where NativeIndexRange.Element == Self.NativeIndex
+	associatedtype NativeRange: Sequence where NativeRange.Element == Self.NativeIndex
 	associatedtype NativeResolvedSlice: NDimensionalResolvedSlice where NativeResolvedSlice.NativeIndex == Self.NativeIndex
 	associatedtype Mask: NDimensionalArray where Mask.Element == Bool, Mask.NativeIndex == Self.NativeIndex
 	typealias Vector = NVector<Element>
 	typealias Storage = NStorage<Element>
 	
+	var storage: Storage { get }
+	var slice: NativeResolvedSlice { get } // addresses storage directly
+	
 	var shape: [Int] { get } // defined in extension below
-	var dimension: Int { get }
+	var rank: Int { get } // tensor meaning (not matrix rank)
 	var size: NativeIndex { get }
-	var indices: NativeIndexRange { get }
+	var indices: NativeRange { get }
 	
 	var compact: Bool { get }
 	var coalesceable: Bool { get }
@@ -54,6 +62,12 @@ public protocol NDimensionalArray: NStorageAccessible, CustomStringConvertible {
 	subscript(index: NativeIndex) -> Element { get nonmutating set }
 	
 //	internal func deriving() -> Self
+}
+
+// deprecated methods
+extension NDimensionalArray {
+	@available(*, deprecated, renamed: "rank")
+	public var dimension: Int { return rank }
 }
 
 // Some common API
@@ -74,6 +88,8 @@ extension NDimensionalArray {
 		self.init(size: size)
 		set(from: values)
 	}
+	public static var bytesPerElement: Int { return MemoryLayout<Element>.stride }
+	public var bytesPerElement: Int { return Self.bytesPerElement }
 	
 	// Copy that is compact & coalescable, and with distinct storage from original
 	public func copy() -> Self {

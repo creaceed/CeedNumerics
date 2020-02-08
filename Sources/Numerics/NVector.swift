@@ -32,16 +32,16 @@ public struct NVector<Element: NValue> : NStorageAccessible, NDimensionalArray {
 	public typealias Mask = NVectorb
 	public typealias NativeResolvedSlice = NResolvedSlice
 	public typealias NativeIndex = NativeResolvedSlice.NativeIndex // Int
-	public typealias NativeIndexRange = Range<Int>
+	public typealias NativeRange = Range<Int>
 	public typealias Storage = NStorage<Element>
 	public typealias Vector = NVector<Element>
 	public typealias Matrix = NMatrix<Element>
 	public typealias Access = Storage.LinearAccess
 	
-	private let storage: Storage
-	private let slice: NResolvedSlice // addresses storage directly
+	public let storage: Storage
+	public let slice: NResolvedSlice // addresses storage directly
 	
-	public var dimension: Int { return 1 }
+	public var rank: Int { return 1 }
 	public var size: Int { return slice.rcount }
 	public var indices: Range<Int> { return 0..<size }
 	public var compact: Bool { return slice.rstep == 1 } // only positive steps are considered compact
