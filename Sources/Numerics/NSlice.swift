@@ -37,11 +37,28 @@ import Foundation
 // <0:6:2> -> means <0,2,4>.
 // start, end, step can all be negative.
 //
+//
+
+// NIndex is used to mark that negative values are possible. 
+// They are interpreted as i+N (N being the size), -1 -> last element
+// (this is *not* a modulo, can still fail with out og bounds)
+// They can be used in 2 places:
+// - dimensional type subscripting when integer would be used (ie, not NativeIndex structs)
+// - NSliceExpression (start/end)
+public typealias NIndex = Int
+public func resolveIndex(_ index: NIndex, size: Int) -> Int {
+	let res = index >= 0 ? index : (index + size)
+	// print("res=\(res), index=\(index), size=\(size)")
+	assert(res <= size)
+	return res // = b/c end (=size) must be representable
+}
+
+//
 // Serves as base type for subscript slicing.
 // Meant to be adopted by range types, possibly others.
 public protocol NSliceExpression {
-	var start: Int? { get }
-	var end: Int? { get }
+	var start: NIndex? { get }
+	var end: NIndex? { get }
 	var step: Int? { get }
 }
 extension NSliceExpression {
@@ -55,13 +72,13 @@ extension NSliceExpression {
 		
 		if step > 0 {
 			sign = 1
-			start = self.start ?? 0
-			end = self.end ?? size
+			start = resolveIndex(self.start ?? 0, size: size)
+			end = resolveIndex(self.end ?? size, size: size)
 			assert(end > start)
 		} else {
 			sign = -1
-			start = self.start ?? size-1
-			end = self.end ?? 0
+			start = resolveIndex(self.start ?? size-1, size: size)
+			end = resolveIndex(self.end ?? 0, size: size)
 			assert(start > end)
 		}
 		count = (end-sign-start)/step+1
@@ -84,13 +101,13 @@ extension NSliceExpression {
 // MARK: - Slice
 // Concrete slice expression that can be created with all args
 public struct NSlice : NSliceExpression {
-	public let start: Int?
-	public let end: Int?
+	public let start: NIndex?
+	public let end: NIndex?
 	public let step: Int?
 	
 	public static let all: NSlice = NSlice(start: nil, end: nil, step: 1)
 	
-	public init(start: Int?, end: Int?, step: Int?) {
+	public init(start: NIndex?, end: NIndex?, step: Int?) {
 		self.start = start
 		self.end = end
 		self.step = step
@@ -115,8 +132,8 @@ infix operator ~ : SliceOperatorPrecedence
 public func ~(lhs: Int, rhs: Int) -> NSlice {
 	return NSlice(start: lhs, end: rhs, step: nil)
 }
-public func ~(lhs: NSlice, rhs: Int) -> NResolvedSlice {
-	let res = NResolvedSlice(start: lhs.start!, end: lhs.end!, step: rhs)
+public func ~(lhs: NSlice, rhs: Int) -> NSlice {
+	let res = NSlice(start: lhs.start, end: lhs.end, step: rhs)
 	return res
 }
 prefix operator ~
@@ -167,7 +184,7 @@ public protocol NDimensionalResolvedSlice: Sequence {
 // expression <:> resolved to <0:N:1>
 // expression <:> resolved to <0:N:1>
 // expression <:3> resolved to <0:3:1>
-public struct NResolvedSlice: NSliceExpression, NDimensionalResolvedSlice {
+public struct NResolvedSlice: NDimensionalResolvedSlice {
 	public typealias NativeIndex = Int
 	public let rstart: Int
 	public let rcount: Int

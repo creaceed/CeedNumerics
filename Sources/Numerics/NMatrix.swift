@@ -173,6 +173,14 @@ public struct NMatrix<Element: NValue> : NStorageAccessible, NDimensionalArray {
 		}
 	}
 	
+	// MARK: - Index resolution
+	private func _resolvedRowIndex(_ index: NIndex) -> Int {
+		return resolveIndex(index, size: rows)
+	}
+	private func _resolvedColumnIndex(_ index: NIndex) -> Int {
+		return resolveIndex(index, size: columns)
+	}
+
 	// Get row/column as vector
 	private func row(at index: Int) -> Vector {
 		let rslice = NResolvedSlice(start: slice.position(index, 0), count: columns, step: slice.column.rstep)
@@ -186,21 +194,21 @@ public struct NMatrix<Element: NValue> : NStorageAccessible, NDimensionalArray {
 	// MARK: - Subscripts
 	
 	// Get subvector
-	public subscript(row rindex: Int) -> Vector {
-		get { return row(at: rindex) }
-		nonmutating set { row(at: rindex).set(from: newValue) }
+	public subscript(row rindex: NIndex) -> Vector {
+		get { return row(at: _resolvedRowIndex(rindex)) }
+		nonmutating set { row(at: _resolvedRowIndex(rindex)).set(from: newValue) }
 	}
-	public subscript(column col: Int) -> Vector {
-		get { return column(at: col) }
-		nonmutating set { column(at: col).set(from: newValue) }
+	public subscript(column col: NIndex) -> Vector {
+		get { return column(at: _resolvedColumnIndex(col)) }
+		nonmutating set { column(at: _resolvedColumnIndex(col)).set(from: newValue) }
 	}
-	public subscript(rindex: Int, colSlice: NSliceExpression) -> Vector {
-		get { return row(at: rindex)[colSlice] }
-		nonmutating set { row(at: rindex)[colSlice].set(from: newValue) }
+	public subscript(rindex: NIndex, colSlice: NSliceExpression) -> Vector {
+		get { return row(at: _resolvedRowIndex(rindex))[colSlice] }
+		nonmutating set { row(at: _resolvedRowIndex(rindex))[colSlice].set(from: newValue) }
 	}
-	public subscript(rowSlice: NSliceExpression, col: Int) -> Vector {
-		get { return column(at: col)[rowSlice] }
-		nonmutating set { column(at: col)[rowSlice].set(from: newValue) }
+	public subscript(rowSlice: NSliceExpression, col: NIndex) -> Vector {
+		get { return column(at: _resolvedColumnIndex(col))[rowSlice] }
+		nonmutating set { column(at: _resolvedColumnIndex(col))[rowSlice].set(from: newValue) }
 	}
 	// Get submatrix
 	private func submatrix(_ rowSlice: NSliceExpression, _ colSlice: NSliceExpression) -> NMatrix<Element> {
@@ -227,19 +235,19 @@ public struct NMatrix<Element: NValue> : NStorageAccessible, NDimensionalArray {
 		nonmutating set { self[rowSlice, NSlice.all] = newValue }
 	}
 	// Unbounded slicing (vector)
-	public subscript(_ unbounded: NUnboundedSlice, _ col: Int) -> Vector {
+	public subscript(_ unbounded: NUnboundedSlice, _ col: NIndex) -> Vector {
 		get { return self[NSlice.all, col] }
 		nonmutating set { self[NSlice.all, col] = newValue }
 	}
-	public subscript(_ row: Int, _ unbounded: NUnboundedSlice) -> Vector {
+	public subscript(_ row: NIndex, _ unbounded: NUnboundedSlice) -> Vector {
 		get { return self[row, NSlice.all] }
 		nonmutating set { self[row, NSlice.all] = newValue }
 	}
 	
 	// Access one element
-	public subscript(row: Int, column: Int) -> Element {
-		get { return storage[slice.position(row, column)] }
-		nonmutating set { storage[slice.position(row, column)] = newValue }
+	public subscript(row: NIndex, column: NIndex) -> Element {
+		get { return storage[slice.position(_resolvedRowIndex(row), _resolvedColumnIndex(column))] }
+		nonmutating set { storage[slice.position(_resolvedRowIndex(row), _resolvedColumnIndex(column))] = newValue }
 	}
 	public subscript(index: NativeIndex) -> Element {
 		get { return self[index.row, index.column] }
@@ -297,7 +305,7 @@ public struct NMatrix<Element: NValue> : NStorageAccessible, NDimensionalArray {
 		}
 	}
 	
-	public subscript(index: [Int]) -> Element {
+	public subscript(index: [NIndex]) -> Element {
 		get { assert(index.count == rank); return self[index[0], index[1]] }
 		nonmutating set { assert(index.count == rank); self[index[0], index[1]] = newValue }
 	}
@@ -310,5 +318,4 @@ public struct NMatrix<Element: NValue> : NStorageAccessible, NDimensionalArray {
 			return try block(access)
 		}
 	}
-	
 }

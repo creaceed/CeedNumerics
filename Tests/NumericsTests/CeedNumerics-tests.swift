@@ -104,7 +104,7 @@ class CeedNumerics_tests_mac: XCTestCase {
 		print("row: \n\(mat[row: 2])")
 		print("column: \n\(mat[column: 1])")
 //		print("column: \n\(mat[column: 5])")
-		let slice = mat[NResolvedSlice(start: 2, count: 3, step: -1), NResolvedSlice.default(size: mat.columns)]
+		let slice = mat[2 ~~ -1, ~]
 		print("slice: \n\(slice)")
 		
 		let newRow = NVectord(size: 4)
@@ -129,20 +129,30 @@ class CeedNumerics_tests_mac: XCTestCase {
 		let i=2
 		mat[~i, (i-1)~].set(7.0)
 		print("mat (after sliced set): \n\(mat)")
+		print("mat (negative index): \n\(mat[-1, -1])")
+		print("mat (negative index row): \n\(mat[-1, ~])")
+		print("mat (negative index column): \n\(mat[~, -2])")
+
 		
-		let linv = Numerics.linspace(start: 0.0, stop: 10.0, count: 10)
-		print("linspace: \n\(linv)")
+		let linv : NVectord = .linspace(start: 0.0, stop: 10.0, count: 10)
+		print("linspace: \(linv)")
+		print("neg index: \(linv[-1])")
+		print("neg index slice: \(linv[-5 ~ -1])")
 	}
 	
 	func testOps() {
 		let tensor = NTensord.ramp(size: [3,3,3])
 		let matrix = NMatrixd.ramp(size: NQuadraticIndex(3,3))
 		let vector = NVectord.ramp(size: 3)
-		
+
 		let tmean = Numerics.mean(tensor)
 		let mmean = Numerics.mean(matrix)
 		let vmean = Numerics.mean(vector)
 		
+		print("tensor: \(tensor)")
+		print("tensor negative index: \(tensor[-1,-1,-1])")
+		print("tensor negative slice: \(tensor[(-1)~~ , NSlice.all, NSlice.all])")
+
 		print("tensor: \(tensor)\nmean: \(tmean)")
 		print("matrix: \(matrix)\nmean: \(mmean)")//" \((0..<9).reduce(0.0) {$0 + Double($1*$1)}/9.0)")
 		print("vector: \(vector)\nmean: \(vmean)")
@@ -179,7 +189,7 @@ class CeedNumerics_tests_mac: XCTestCase {
 	func testDimensionality() {
 		printHeader("Dimensionality")
 		
-		let vec = Numerics.range(stop: 12.0)
+		let vec = NVectord.range(stop: 12.0)
 		XCTAssert(Numerics.mean(vec) - 5.5 < _tol)
 		print("Vec: \(vec)")
 		
@@ -246,7 +256,7 @@ class CeedNumerics_tests_mac: XCTestCase {
 	func testMaskedAndIndexedAccess() {
 		printHeader("Masked & Indexed")
 		
-		let v1: NVectord = Numerics.linspace(start: 0.0, stop: 50.0, count: 51)
+		let v1: NVectord = .linspace(start: 0.0, stop: 50.0, count: 51)
 		let ind = NVectori([5, 9, 10, 19])
 		let mask = (v1 >= 21.0)
 		
@@ -304,6 +314,28 @@ class CeedNumerics_tests_mac: XCTestCase {
 //		tensorA[1,1,1] = 27.0
 //		print("tensor: \n\(tensorA)")
 //		print("slice: \n\(slice)")
+	}
+
+	func testTensorSlicing() {
+//		let tensor = NTensord.ramp(size: [3,2,4,3])
+//		let stensor1 = tensor[0, 0~, all, all]
+//		let sval: Double = tensor[1,1,1,1]
+
+		let tensor = NTensord.ramp(size: [2,2,2])
+		let stensor1 = tensor[n.all, 1, n.all]
+		let stensor2 = tensor.insertingNewAxis(at: 0).insertingNewAxis(at: 3)
+		let stensor3 = tensor[n.all, 1, n.newaxis, n.all, n.newaxis]
+		let sval: Double = tensor[1,1,1]
+
+
+		print("tensor: \(tensor)")
+		print("sub tensor: \(stensor1)")
+		print("new axis tensor: \(stensor2)")
+
+		print("new axis tensor subscript: \(stensor3)")
+
+		print("s1: \(stensor1.shape)")
+		print("val: \(sval)")
 	}
 	
 //	func testPerformanceSliceLoop() {

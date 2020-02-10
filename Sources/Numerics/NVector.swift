@@ -91,15 +91,20 @@ public struct NVector<Element: NValue> : NStorageAccessible, NDimensionalArray {
 		return array
 	}
 	
+	// MARK: - Index resolution
+	private func _resolvedIndex(_ index: NIndex) -> Int {
+		return resolveIndex(index, size: size)
+	}
+	
 	// MARK: - Subscripts
 	// NDarray: Access one element
-	public subscript(index: [Int]) -> Element {
+	public subscript(index: [NIndex]) -> Element {
 		get { assert(index.count == 1); return self[index[0]] }
 		nonmutating set { assert(index.count == 1); self[index[0]] = newValue }
 	}
-	public subscript(index: Int) -> Element {
-		get { return storage[slice.position(at: index)] }
-		nonmutating set { storage[slice.position(at: index)] = newValue }
+	public subscript(index: NIndex) -> Element {
+		get { return storage[slice.position(at: _resolvedIndex(index))] }
+		nonmutating set { storage[slice.position(at: _resolvedIndex(index))] = newValue }
 	}
 	// Specific (slicing)s
 	public subscript(_ s: NSliceExpression) -> Vector {
