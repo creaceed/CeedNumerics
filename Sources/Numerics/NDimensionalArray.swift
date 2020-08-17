@@ -25,6 +25,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 import Foundation
+import Numerics_C
 
 // TODO list for NDimensionalArray:
 // - unify steps / strides concepts into strides + canonical steps / define compact form (H*W,W,1)
@@ -70,6 +71,18 @@ extension NDimensionalArray {
 	public var dimension: Int { return rank }
 }
 
+internal enum SetterVariant {
+	case cStrided, cStridedNoSpecific
+	case swiftPointer, swiftPointerNoMemCopy
+	case swiftIndicesTraversal
+	case swiftStorageTraversal
+	case swiftDirect
+	case swiftConstant1, swiftConstant2 // these 2 don't read source values (constant setter, for speed tests). Don't use them for real setter
+}
+internal struct _DimensionalStridedIterator {
+	var coordinate: Int
+}
+
 // Some common API
 extension NDimensionalArray {
 	public var shape: [Int] { return size.asArray }
@@ -97,13 +110,172 @@ extension NDimensionalArray {
 		result.set(from: self)
 		return result
 	}
+	internal func _set(from: Self, variant: SetterVariant) {
+		precondition(from.size == self.size)
+				
+		
+		switch variant {
+			case .swiftIndicesTraversal: do {
+				for i in self.indices {
+					self[i] = from[i]
+				}
+			}
+			case .swiftStorageTraversal: do {
+				Numerics.withStorageAccess(self, from) { dst, src in
+//					for (d,s) in zip(dst.indexes, src.indexes) {
+//						dst.base[d] = dst.base[s]
+//					}
+					var dit = dst.indexes.makeIterator(), sit = src.indexes.makeIterator()
+					
+//					while let d = dit.next() {
+					for _ in 0..<self.size.asElementCount {
+						let d = dit.next()!
+						let s = sit.next()!
+						dst.base[d] = src.base[s]
+					}
+				}
+			}
+			case .cStrided, .cStridedNoSpecific: do {
+				Numerics.withStorageAccess(self, from) { dst, src in
+					let enableSpecific = variant != .cStridedNoSpecific
+					if enableSpecific && Element.self == Float.self {
+						strided_set_float(self.rank, self.shape, self.bytesPerElement, (dst.base as! UnsafeMutablePointer<Float>), dst.slice.steps, (src.base as! UnsafeMutablePointer<Float>), src.slice.steps)
+					} else {
+						strided_set_gen(self.rank, self.shape, self.bytesPerElement, UnsafeMutableRawPointer(dst.base), dst.slice.steps, UnsafeRawPointer(src.base), src.slice.steps)
+					}
+				}
+			}
+			case .swiftPointer, .swiftPointerNoMemCopy: do {
+				Numerics.withLinearizedAccesses(from, self) { pfrom, pself in
+					let enableMemCopy = variant != .swiftPointerNoMemCopy
+					
+					if enableMemCopy && pfrom.stride == 1 && pself.stride == 1 {
+						pself.base.assign(from: pfrom.base, count: pself.count)
+					} else {
+						// let fptr = pfrom.base, sptr = pself.base
+						// let fstr = pfrom.stride, sstr = pself.stride
+						// for i in 0..<pfrom.count {
+						// 	sptr[i*sstr] = fptr[i*fstr]
+						// }
+						var fptr = pfrom.base, sptr = pself.base
+						let fstr = pfrom.stride, sstr = pself.stride
+						for _ in 0..<pfrom.count {
+							sptr.pointee = fptr.pointee
+							sptr = sptr.advanced(by: sstr)
+							fptr = fptr.advanced(by: fstr)
+						}
+					}
+				}
+			}
+			case .swiftDirect: do {
+				Numerics.withStorageAccess(from, self) { pfrom, pself in
+					let dslice = pself.slice
+					let sslice = pfrom.slice
+					let rank = self.rank
+					let shape = self.shape
+					let sstrides = sslice.steps
+					let dstrides = dslice.steps
+					
+					var it: [_DimensionalStridedIterator] = Array(repeating: _DimensionalStridedIterator(coordinate: 0), count: rank)
+					
+//					var dpos = 0, spos = 0
+					var sptr = pfrom.base, dptr = pself.base
+					
+					while true {
+						dptr.pointee = sptr.pointee
+						
+						for dim in stride(from: rank-1, through: 0, by: -1) {
+							it[dim].coordinate += 1
+							sptr += sstrides[dim]
+							dptr += dstrides[dim]
+							
+							if it[dim].coordinate == shape[dim] {
+								sptr -= shape[dim] * sstrides[dim];
+								dptr -= shape[dim] * dstrides[dim];
+								it[dim].coordinate = 0;
+								
+								if(dim == 0) { return }
+								continue
+							}
+							break
+						}
+					}
+				}
+			}
+			case .swiftConstant1: do {
+				Numerics.withStorageAccess(from, self) { pfrom, pself in
+					let dslice = pself.slice
+//					let sslice = pfrom.slice
+					let rank = self.rank
+					let shape = self.shape
+//					let sstrides = sslice.steps
+					let dstrides = dslice.steps
+					
+					var it: [_DimensionalStridedIterator] = Array(repeating: _DimensionalStridedIterator(coordinate: 0), count: rank)
+					
+					//					var dpos = 0, spos = 0
+					var /*sptr = pfrom.base, */dptr = pself.base
+//					var elem: Element = .none
+					
+					
+					while true {
+						dptr.pointee = .none
+						
+						for dim in stride(from: rank-1, through: 0, by: -1) {
+							it[dim].coordinate += 1
+//							sptr += sstrides[dim]
+							dptr += dstrides[dim]
+							
+							if it[dim].coordinate == shape[dim] {
+//								sptr -= shape[dim] * sstrides[dim];
+								dptr -= shape[dim] * dstrides[dim];
+								it[dim].coordinate = 0;
+								
+								if(dim == 0) { return }
+								continue
+							}
+							break
+						}
+					}
+				}
+			}
+			case .swiftConstant2: do {
+				Numerics.withStorageAccess(self, from) { dst, src in
+					//					for (d,s) in zip(dst.indexes, src.indexes) {
+					//						dst.base[d] = dst.base[s]
+					//					}
+					//var dit = dst.indexes.makeIterator()//, sit = src.indexes.makeIterator()
+					
+					//					while let d = dit.next() {
+					for d in dst.indexes {
+//						let d = dit.next()!
+//						let s = sit.next()!
+						dst.base[d] = .none
+					}
+				}
+			}
+		}
+		
+		
+		
+		//		Numerics.withAddresses(from, self) { pfrom, pself in
+		//			pself.pointee = pfrom.pointee
+		//		}
+	}
+	
 	// Note: set API does not expose data range as slicing (SliceExpression) is used for that
 	public func set(from: Self) {
 		precondition(from.size == self.size)
-		Numerics.withAddresses(from, self) { pfrom, pself in
-			pself.pointee = pfrom.pointee
-		}
+		
+		_set(from: from, variant: .cStrided)
+		
+		
+		// TODO: when setter is done, revise all traversal code for performance assessment.
+		
+		// Note: best approach could be to use memset when compact, and direct pointer traversal when not. Or a mix of those approaches if last dims are compact.
+//		_set(from: from, variant: .swiftDirect)
 	}
+
 	public func set(_ value: Element) {
 		for i in self.indices {
 			self[i] = value
@@ -224,7 +396,7 @@ extension NDimensionalArray where Element: SignedNumeric, Element.Magnitude == E
 
 		// TODO: could be faster with stoppable value enumeration
 		for (pos, rpos) in zip(indices, rhs.indices) {
-			if abs(rhs[pos] - rhs[rpos]) > tolerance { return false }
+			if abs(self[pos] - rhs[rpos]) > tolerance { return false }
 		}
 		return true
 	}

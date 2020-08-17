@@ -1,5 +1,3 @@
-// swift-tools-version:5.1
-
 /*
 Copyright (c) 2018-present Creaceed SPRL and other CeedNumerics contributors.
 
@@ -26,36 +24,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include <stddef.h>
 
-import PackageDescription
-
-let package = Package(
-	name: "Numerics",
-	products: [
-		// Products define the executables and libraries produced by a package, and make them visible to other packages.
-		.library(
-			name: "Numerics",
-			targets: ["Numerics"]),
-	],
-	dependencies: [
-		// Dependencies declare other packages that this package depends on.
-		// .package(url: /* package url */, from: "1.0.0"),
-	],
-	targets: [
-		// Targets are the basic building blocks of a package. A target can define a module or a test suite.
-		// Targets can depend on other targets in this package, and on products in packages which this package depends on.
-		.target(
-			name: "Numerics",
-			dependencies: ["Numerics_C"]
-			// , swiftSettings: [SwiftSetting.unsafeFlags(["-O"])]
-		),
-		.target(
-			name: "Numerics_C",
-			dependencies: []
-			// , cSettings: [CSetting.unsafeFlags(["-O2"])]
-		),
-		.testTarget(
-			name: "NumericsTests",
-			dependencies: ["Numerics"]),
-	]
-)
+extern void strided_set_float(long rank, long const *shape, size_t bpe, float *dest, size_t const *dstrides, float const *src, size_t const *sstrides);
+extern void strided_set_gen(long rank, long const *shape, size_t bpe, void *dest, size_t const *dstrides, void const *src, size_t const *sstrides);

@@ -40,6 +40,13 @@ func equals<DT: NDimensionalArray>(_ lhs: DT, _ rhs: DT) -> Bool where DT.Elemen
 	let tolerance: DT.Element = DT.Element(_tol)
 	return lhs.isEqual(to: rhs, tolerance: tolerance)
 }
+
+func timed(_ label: String, block: ()->()) {
+	let date = Date()
+	block()
+	print(label, -date.timeIntervalSinceNow)
+}
+
 //
 //func equals<E: NValue>(_ lhs: NVector<E>, _ rhs: NVector<E>) -> Bool where E: NFloatingPoint {
 //	let tolerance: E = E(_tol)
@@ -284,11 +291,15 @@ class CeedNumerics_tests_mac: XCTestCase {
 	
 	func testMisc() {
 		printHeader("Misc")
-		let v1 = NVectord([1.0, 2.0, 3.0])
-		let v2 = NVectord([4.0, 5.0, 6.0])
+		let v1 = NVectorf([1.0, 2.0, 3.0])
+		let v2 = NVectorf([4.0, 5.0, 6.0])
 		
 		// Test Vector.set()
 		v1.set(from: v2)
+		
+		print("v1: \(v1.description)")
+		print("v2: \(v2.description)")
+		
 		XCTAssert(equals(v1, v2))
 		
 		
@@ -336,6 +347,32 @@ class CeedNumerics_tests_mac: XCTestCase {
 
 		print("s1: \(stensor1.shape)")
 		print("val: \(sval)")
+	}
+	
+	func testIteratorSpeed() {
+		let t1 = NTensorf.ramp(size: [10,100,100])
+		let t2 = NTensorf(repeating: 0.0, size: t1.size)
+			
+		timed("c_sp") { t2._set(from: t1, variant: .cStrided) }
+		timed("c_nosp") { t2._set(from: t1, variant: .cStridedNoSpecific) }
+		timed("sw_mc") { t2._set(from: t1, variant: .swiftPointer) }
+		timed("sw_nomc") { t2._set(from: t1, variant: .swiftPointerNoMemCopy) }
+		timed("sw_ind") { t2._set(from: t1, variant: .swiftIndicesTraversal) }
+		timed("sw_stt") { t2._set(from: t1, variant: .swiftStorageTraversal) }
+		timed("sw_dir") { t2._set(from: t1, variant: .swiftDirect) }
+		
+		timed("sw_const1") { t2._set(from: t1, variant: .swiftConstant1) }
+		timed("sw_const2") { t2._set(from: t1, variant: .swiftConstant2) }
+		
+		print(t2[0, 0, 2])
+		
+//		timed {
+//			let t1 = NMatrixd.ramp(size: NQuadraticIndex(1000, 1000))
+//		}
+		
+//		let t2 = NTensord.ramp(size: [100,100,100])
+		
+		
 	}
 	
 //	func testPerformanceSliceLoop() {

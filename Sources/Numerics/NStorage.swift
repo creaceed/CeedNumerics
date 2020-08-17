@@ -42,12 +42,14 @@ public protocol NMutableStorage: NStorage {
 public protocol NDimensionalStorageAccess {
 	associatedtype Element: NValue
 	associatedtype Slice: NDimensionalResolvedSlice
+	associatedtype StorageIndexSequence: Sequence where StorageIndexSequence.Element == Int
 	typealias Storage = NStorage<Element>
 	
 	var compact: Bool { get }
 	var coalescable: Bool { get }
 	var base: UnsafeMutablePointer<Element> { get }// pointer to the first
 	var slice: Slice { get }
+	var indexes: StorageIndexSequence { get } // to traverse storage by indexing
 	
 	// we could have generic layout capability
 //	var genericStrides: [Int]
@@ -187,6 +189,8 @@ extension NStorage {
 		// Note: QuadraticAccess's slice always starts at 0 (unlike Matrix's)
 		public var slice: NResolvedQuadraticSlice { return NResolvedQuadraticSlice(row: NResolvedSlice(start: 0, count: count.row, step: stride.row), column: NResolvedSlice(start: 0, count: count.column, step: stride.column)) }
 		
+		public var indexes: NResolvedQuadraticSlice { return slice }
+		
 		// shortcut for APIs that need this
 		public var rowBytes: Int { return stride.row * MemoryLayout<Element>.stride }
 		
@@ -207,6 +211,8 @@ extension NStorage {
 		public func column(_ at: Int) -> LinearAccess { return LinearAccess(base: base(column: at), stride: stride.row, count: count.row) }
 		public var rows: LazyMapCollection<Range<Int>, LinearAccess> { return (0..<count.row).lazy.map { self.row($0) } }
 		public var columns: LazyMapCollection<Range<Int>, LinearAccess> { return (0..<count.column).lazy.map { self.column($0) } }
+		
+		
 		
 		public func linearized(coalesce: Bool) -> AnySequence<LinearAccess> {
 			if coalescable && coalesce {
@@ -239,6 +245,7 @@ extension NStorage {
 			let slices = zip(count, stride).map { NResolvedSlice(start: 0, count: $0.0, step: $0.1) }
 			return NResolvedGenericSlice(slices)
 		}
+		public var indexes: NResolvedGenericSlice { return slice }
 		
 		public var compact: Bool { return slice.compact }
 		public var coalescable: Bool { return slice.coalesceable }
@@ -334,6 +341,9 @@ extension Numerics {
 		}
 	}
 	// MARK: - Storage/Value Stride
+	
+	
+	// TODO: see direct approach + try access block. Can also try joint1x, joint2x, jointNx implementation (protocol), to avoid multi-iterator termination test overhead (same shape).
 	internal static func withAddresses<T: NStorageAccessible>(_ a: T, _ block: (_ pointer: UnsafeMutablePointer<Element>) -> Void) where T.Element == Element {
 		a._withStorageAccess { aacc in
 			// single arg -> we can always (try to) coalesce
