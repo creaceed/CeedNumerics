@@ -639,13 +639,57 @@ extension NResolvedGenericSlice {
 	}
 }
 
+//public struct NGenericSliceIterator: IteratorProtocol {
+//	private let start: [Int]
+//	private let step: [Int]
+//	private let end: [Int]
+//	// internal state
+//	private var current: [Int]
+//	private var done: Bool = false
+//
+//	public init(slice: NResolvedGenericSlice) {
+////		assert((slice.row.rend - slice.row.rstart) % slice.row.rstep == 0) // so that we can do exact comparison
+////		assert((slice.column.rend - slice.column.rstart) % slice.column.rstep == 0)
+////		assert(abs(slice.row.rstep) > 0)
+////		assert(abs(slice.column.rstep) > 0)
+//
+//		start = slice.components.map { $0.rstart }
+//		step = slice.components.map { $0.rstep }
+//		end = slice.components.map { $0.rend }
+//		current = start
+//		done = (start == end)
+//	}
+//
+//	public mutating func next() -> Int? {
+//		guard !done else { return nil }
+//
+//		// loc = sum()
+//		let loc = current.reduce(0) { $0+$1 }
+//
+//		for dimi in stride(from: start.count-1, through: 0, by: -1) {
+//			current[dimi] += step[dimi]
+//			if current[dimi] == end[dimi] {
+//				// reset dimension, move to next dim
+//				current[dimi] = start[dimi]
+//				done = (dimi == 0)
+//			} else {
+//				break
+//			}
+//		}
+//
+//		return loc
+//	}
+//}
+
 public struct NGenericSliceIterator: IteratorProtocol {
 	private let start: [Int]
 	private let step: [Int]
 	private let end: [Int]
+//	private let backstep: [Int]
 	// internal state
 	private var current: [Int]
 	private var done: Bool = false
+	private var value: Int
 
 	public init(slice: NResolvedGenericSlice) {
 //		assert((slice.row.rend - slice.row.rstart) % slice.row.rstep == 0) // so that we can do exact comparison
@@ -656,21 +700,25 @@ public struct NGenericSliceIterator: IteratorProtocol {
 		start = slice.components.map { $0.rstart }
 		step = slice.components.map { $0.rstep }
 		end = slice.components.map { $0.rend }
+//		backstep =
 		current = start
 		done = (start == end)
+		value = current.reduce(0) { $0+$1 }
 	}
 
 	public mutating func next() -> Int? {
 		guard !done else { return nil }
 
 		// loc = sum()
-		let loc = current.reduce(0) { $0+$1 }
+		let loc = value
 		
 		for dimi in stride(from: start.count-1, through: 0, by: -1) {
 			current[dimi] += step[dimi]
+			value += step[dimi]
 			if current[dimi] == end[dimi] {
 				// reset dimension, move to next dim
 				current[dimi] = start[dimi]
+				value -= end[dimi] - start[dimi]
 				done = (dimi == 0)
 			} else {
 				break

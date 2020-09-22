@@ -61,7 +61,7 @@ public struct NVector<Element: NValue> : NStorageAccessible, NDimensionalArray {
 		self.init(storage: storage, slice: .default(size: size))
 		
 		storage.withUnsafeAccess { access in
-			_ = UnsafeMutableBufferPointer(start: access.base, count: self.size).initialize(repeating: value)
+			UnsafeMutableBufferPointer(start: access.base, count: self.size).initialize(repeating: value)
 		}
 	}
 	
