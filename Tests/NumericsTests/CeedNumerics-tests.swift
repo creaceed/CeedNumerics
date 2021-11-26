@@ -375,6 +375,18 @@ class CeedNumerics_tests_mac: XCTestCase {
 		
 	}
 	
+	func testFlipping() {
+		// odd count -> creates a difficulty (addressed)
+		//let t1 = NTensorf.ramp(size: [5, 10])
+		
+		let t1 = NTensorf.ramp(size: [5, 7])
+		
+		print(t1)
+		print("\n")
+		t1.flip(axes: [true, false])
+		print(t1)
+	}
+	
 //	func testPerformanceSliceLoop() {
 //		// This is an example of a performance test case.
 //		self.measure {

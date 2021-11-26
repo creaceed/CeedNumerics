@@ -25,6 +25,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include <stddef.h>
+#include <stdbool.h>
 
+// Setter
 extern void strided_set_float(long rank, long const *shape, size_t bpe, float *dest, size_t const *dstrides, float const *src, size_t const *sstrides);
 extern void strided_set_gen(long rank, long const *shape, size_t bpe, void *dest, size_t const *dstrides, void const *src, size_t const *sstrides);
+
+// In-place flipping
+extern void flip_gen(long rank, long const *shape, size_t bpe, void *dest, size_t const *dstrides, const bool *axes);

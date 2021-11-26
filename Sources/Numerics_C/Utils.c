@@ -26,10 +26,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "Utils.h"
 #include <stdio.h>
+#include <assert.h>
 
 #define MAX_RANK 16
 
 void strided_set_float(long rank, long const *shape, size_t bpe, float *dest, size_t const *dstrides, float const *src, size_t const *sstrides) {
+	assert(rank <= MAX_RANK);
 //	printf("hello from C\n");
 	
 //	long dsteps[MAX_RANK] = {0};
@@ -83,6 +85,7 @@ void strided_set_float(long rank, long const *shape, size_t bpe, float *dest, si
 }
 
 void strided_set_gen(long rank, long const *shape, size_t bpe, void *dest_v, size_t const *dstrides, void const *src_v, size_t const *sstrides) {
+	assert(rank <= MAX_RANK);
 //	printf("hello from C\n");
 	
 //	long dsteps[MAX_RANK] = {0};
@@ -136,6 +139,87 @@ void strided_set_gen(long rank, long const *shape, size_t bpe, void *dest_v, siz
 				
 				if(dim == 0) return;
 				continue;
+			}
+			break;
+		}
+	}
+}
+
+// Quick & dirty implementation of generic in-place flipping
+extern void flip_gen(long rank, long const *shape, size_t bpe, void *dest_v, size_t const *dstrides, const bool *axes) {
+	//printf("");
+	
+	assert(rank <= MAX_RANK);
+	
+	struct {
+		long tshape; // halved for first flipped dim (because swap)
+		long coordinate;
+		long sstride; // bpe adjusted, can be negative
+		long dstride;
+	} it[MAX_RANK] = {0};
+	
+	uint8_t *dest = dest_v;
+	
+	long spos = 0;
+	long dpos = 0;
+	long swapped_dims = 0;
+//	counter = 0;
+	long count = rank > 0 ? 1 : 0;
+	bool first = true;
+	
+	for(long dim=0; dim<rank; dim++) {
+		count *= shape[dim];
+		assert(dstrides[dim] > 0); // required for the termination condition (dpos < spos)
+		it[dim].sstride = dstrides[dim] * bpe;
+		it[dim].dstride = dstrides[dim] * bpe;
+		it[dim].tshape = shape[dim];
+		
+		if(axes[dim]) {
+			dpos += (shape[dim]-1) * it[dim].dstride;
+			it[dim].dstride = -it[dim].dstride;
+			swapped_dims++;
+			
+			if(first) {
+				first = false;
+				// we must include center hyperplane in case of odd dim, no? (not just /2)
+				it[dim].tshape = (it[dim].tshape+1)/2;
+			}
+		}
+	}
+	
+	if(swapped_dims == 0) return; // nothing to do
+	if(count == 0) return;
+	
+	for (;;) {
+		//printf("\t swap %ld -> %ld\n", spos, dpos);
+		for(int i=0; i<bpe; i++) {
+			uint8_t tmp = dest[dpos+i];
+			
+			// swap bytes per bytes
+			dest[dpos+i] = dest[spos+i];
+			dest[spos+i] = tmp;
+		}
+		
+		for(long dim=rank-1; dim >= 0; dim--) {
+			//printf("dim: %ld\n", dim);
+			it[dim].coordinate += 1;
+			spos += it[dim].sstride;
+			dpos += it[dim].dstride;
+			
+			// we stop at half on first flipped axis.
+			if (it[dim].coordinate == it[dim].tshape) {
+				//printf("end-dim: %ld (coord=%ld)\n", dim, it[dim].coordinate);
+				// dim is over, move to previous (or stop)
+				spos -= it[dim].tshape * it[dim].sstride;
+				dpos -= it[dim].tshape * it[dim].dstride;
+				it[dim].coordinate = 0;
+				
+				if(dim == 0) return;
+				continue;
+			}
+			// check to avoid to stop at mid point. TODO: improve
+			if(dpos < spos) {
+				return;
 			}
 			break;
 		}

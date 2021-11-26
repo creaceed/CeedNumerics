@@ -294,6 +294,15 @@ extension NDimensionalArray {
 		}
 	}
 	
+	// flip data in-place for passed dimensions.
+	public func flip(axes: [Bool]) {
+		precondition(axes.count == rank)
+		
+		Numerics.withStorageAccess(self) { dst in
+			flip_gen(rank, shape, self.bytesPerElement, UnsafeMutableRawPointer(dst.base), dst.slice.steps, axes)
+		}
+	}
+	
 	public subscript(mask: Mask) -> Vector {
 		get {
 			precondition(mask.size == size)
