@@ -163,7 +163,7 @@ public struct NTensor<Element: NValue> : NStorageAccessible, NDimensionalArray {
 					inaxis += 1
 					outaxis += 1
 					return op
-				case .new as NAxisOperator: 
+				case NAxisOperator.new as NAxisOperator: 
 					let op: AxisTask = .insert(at: outaxis)
 					inaxis += 0
 					outaxis += 0
