@@ -49,32 +49,32 @@ extension Numerics where Element: NAccelerateFloatingPoint {
 		precondition(a.size == b.size && a.size == result.size)
 		
 		withLinearizedAccesses(a, b, result) { aacc, bacc, racc in
-			Element.mx_vsub(aacc.base, aacc.stride, bacc.base, bacc.stride, racc.base, racc.stride, numericCast(racc.count))
+			Element.mx_vsub(aacc.base, numericCast(aacc.stride), bacc.base, numericCast(bacc.stride), racc.base, numericCast(racc.stride), numericCast(racc.count))
 		}
 	}
 	public static func add<DT: NDimensionalArray>(_ a: DT, _ b: DT, _ result: DT) where DT.Element == Element {
 		precondition(a.shape == b.shape && a.shape == result.shape)
 		withLinearizedAccesses(a, b, result) { aacc, bacc, racc in
-			Element.mx_vadd(aacc.base, aacc.stride, bacc.base, bacc.stride, racc.base, racc.stride, numericCast(racc.count))
+			Element.mx_vadd(aacc.base, numericCast(aacc.stride), bacc.base, numericCast(bacc.stride), racc.base, numericCast(racc.stride), numericCast(racc.count))
 		}
 	}
 	public static func add<DT: NDimensionalArray>(_ a: DT, _ b: DT.Element, _ result: DT) where DT.Element == Element {
 		precondition(a.shape == result.shape)
 		withLinearizedAccesses(a, result) { aacc, racc in
-			Element.mx_vsadd(aacc.base, aacc.stride, b, racc.base, racc.stride, numericCast(racc.count))
+			Element.mx_vsadd(aacc.base, numericCast(aacc.stride), b, racc.base, numericCast(racc.stride), numericCast(racc.count))
 		}
 	}
 	public static func multiplyElements<DT: NDimensionalArray>(_ a: DT, _ b: DT, _ result: DT) where DT.Element == Element {
 		precondition(a.size == b.size && b.size == result.size)
 		
 		withLinearizedAccesses(a, b, result) { aacc, bacc, racc in
-			Element.mx_vmul(aacc.base, aacc.stride, bacc.base, bacc.stride, racc.base, racc.stride, numericCast(racc.count))
+			Element.mx_vmul(aacc.base, numericCast(aacc.stride), bacc.base, numericCast(bacc.stride), racc.base, numericCast(racc.stride), numericCast(racc.count))
 		}
 	}
 	public static func multiply<DT: NDimensionalArray>(_ a: Element, _ b: DT, _ result: DT) where DT.Element == Element {
 		precondition(b.shape == result.shape)
 		withLinearizedAccesses(b, result) { bacc, racc in
-			Element.mx_vsmul(bacc.base, bacc.stride, a, racc.base, racc.stride, numericCast(racc.count))
+			Element.mx_vsmul(bacc.base, numericCast(bacc.stride), a, racc.base, numericCast(racc.stride), numericCast(racc.count))
 		}
 	}
 	// Obvious swap
@@ -83,7 +83,7 @@ extension Numerics where Element: NAccelerateFloatingPoint {
 	public static func divideElements<DT: NDimensionalArray>(_ a: DT, _ b: DT, _ result: DT) where DT.Element == Element {
 		precondition(a.shape == b.shape && a.shape == result.shape)
 		withLinearizedAccesses(a, b, result) { aacc, bacc, racc in
-			Element.mx_vdiv(aacc.base, aacc.stride, bacc.base, bacc.stride, racc.base, racc.stride, numericCast(racc.count))
+			Element.mx_vdiv(aacc.base, numericCast(aacc.stride), bacc.base, numericCast(bacc.stride), racc.base, numericCast(racc.stride), numericCast(racc.count))
 		}
 //		withStorageAccess(a) { aacc in
 //			withStorageAccess(b) { bacc in
@@ -106,7 +106,7 @@ extension Numerics where Element: NAccelerateFloatingPoint {
 		
 		withLinearizedAccesses(a, b, output) { aacc, bacc, oacc in
 			// TODO: check negative stride is supported for input/output (doc only mentions kernel)
-			Element.mx_vsmsma(aacc.base, aacc.stride, asp, bacc.base, bacc.stride, bs, oacc.base, oacc.stride, numericCast(aacc.count))
+			Element.mx_vsmsma(aacc.base, numericCast(aacc.stride), asp, bacc.base, numericCast(bacc.stride), bs, oacc.base, numericCast(oacc.stride), numericCast(aacc.count))
 		}
 	}
 	
@@ -121,7 +121,7 @@ extension Numerics where Element: NAccelerateFloatingPoint {
 		withLinearizedAccesses(a) { alin in
 			// possibly invoked multiple types
 			var lm: Element = 0.0
-			Element.mx_meanv(alin.base, alin.stride, C: &lm, numericCast(alin.count))
+			Element.mx_meanv(alin.base, numericCast(alin.stride), C: &lm, numericCast(alin.count))
 			mean += lm
 			c += 1
 		}
@@ -133,7 +133,7 @@ extension Numerics where Element: NAccelerateFloatingPoint {
 		withLinearizedAccesses(a) { alin in
 			// possibly invoked multiple types
 			var lm: Element = 0.0
-			Element.mx_measqv(alin.base, alin.stride, C: &lm, numericCast(alin.count))
+			Element.mx_measqv(alin.base, numericCast(alin.stride), C: &lm, numericCast(alin.count))
 			mean += lm
 			c += 1
 		}
@@ -144,7 +144,7 @@ extension Numerics where Element: NAccelerateFloatingPoint {
 		withLinearizedAccesses(a) { alin in
 			// possibly invoked multiple types
 			var lm: Element = 0.0
-			Element.mx_minv(alin.base, alin.stride, C: &lm, numericCast(alin.count))
+			Element.mx_minv(alin.base, numericCast(alin.stride), C: &lm, numericCast(alin.count))
 			m = min(m, lm)
 		}
 		return m
@@ -154,7 +154,7 @@ extension Numerics where Element: NAccelerateFloatingPoint {
 		withLinearizedAccesses(a) { alin in
 			// possibly invoked multiple types
 			var lm: Element = 0.0
-			Element.mx_maxv(alin.base, alin.stride, C: &lm, numericCast(alin.count))
+			Element.mx_maxv(alin.base, numericCast(alin.stride), C: &lm, numericCast(alin.count))
 			m = max(m, lm)
 		}
 		return m

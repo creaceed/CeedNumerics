@@ -36,6 +36,8 @@ public protocol NDimensionalArray: NStorageAccessible, CustomStringConvertible {
 	associatedtype NativeRange: Sequence where NativeRange.Element == Self.NativeIndex
 	associatedtype NativeResolvedSlice: NDimensionalResolvedSlice where NativeResolvedSlice.NativeIndex == Self.NativeIndex
 	associatedtype Mask: NDimensionalArray where Mask.Element == Bool, Mask.NativeIndex == Self.NativeIndex
+	
+	typealias Tensor = NTensor<Element>
 	typealias Vector = NVector<Element>
 	typealias Storage = NStorage<Element>
 	
@@ -103,6 +105,13 @@ extension NDimensionalArray {
 	}
 	public static var bytesPerElement: Int { return MemoryLayout<Element>.stride }
 	public var bytesPerElement: Int { return Self.bytesPerElement }
+	
+	public func asTensor() -> Tensor {
+		let slice: NResolvedGenericSlice = .init(self.slice.components)
+		let tensor: Tensor = .init(storage: storage, slice: slice)
+		
+		return tensor
+	}
 	
 	// Copy that is compact & coalescable, and with distinct storage from original
 	public func copy() -> Self {

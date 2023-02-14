@@ -177,6 +177,7 @@ public protocol NDimensionalResolvedSlice: Sequence {
 	var starts: [Int] { get }
 	var steps: [Int] { get }
 	var shape: [Int] { get }
+	var components: [NResolvedSlice] { get }
 	
 	func position(at index: NativeIndex) -> Int
 }
@@ -197,6 +198,7 @@ public struct NResolvedSlice: NDimensionalResolvedSlice {
 	public var shape: [Int] { return [rcount] }
 	public var starts: [Int] { return [rstart] }
 	public var steps: [Int] { return [rstep] }
+	public var components: [NResolvedSlice] { return [self] }
 	
 	
 	public var start: Int? { return rstart }
@@ -282,6 +284,7 @@ public struct NResolvedQuadraticSlice: NDimensionalResolvedSlice {
 	public var shape: [Int] { return [row.rcount, column.rcount] }
 	public var starts: [Int] { return [row.rstart, column.rstart] }
 	public var steps: [Int] { return [row.rstep, column.rstep] }
+	public var components: [NResolvedSlice] { return [row, column] }
 	
 	// true if successive elements have no gap between them (including across dimensions)
 	public var compact: Bool {

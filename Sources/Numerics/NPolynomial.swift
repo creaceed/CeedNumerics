@@ -39,7 +39,7 @@ extension Numerics where Element: NLinearSolverFloatingPoint {
 		
 		withStorageAccess(poly, x, result) { pacc, xacc, racc in
 			// Note: reverse iteration for poly (vDSP convention)
-			Element.mx_vpoly(pacc.base+pacc.last, -pacc.stride, xacc.base, xacc.stride, racc.base, racc.stride, numericCast(xacc.count), numericCast(poly.size-1))
+			Element.mx_vpoly(pacc.base+pacc.last, -numericCast(pacc.stride), xacc.base, numericCast(xacc.stride), racc.base, numericCast(racc.stride), numericCast(xacc.count), numericCast(poly.size-1))
 		}
 	}
 	public static func polyval(_ poly: Vector, x: Element) -> Element {

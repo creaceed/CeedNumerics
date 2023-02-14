@@ -387,6 +387,32 @@ class CeedNumerics_tests_mac: XCTestCase {
 		print(t1)
 	}
 	
+	func testTensorFromOtherTypes() {
+		let v1 = NVectorf([1.0, 2.0, 3.0])
+		let t1 = v1.asTensor()
+		
+		let matA = NMatrixd([[1.0, 2.0, 3.0],
+							 [1.0,-2.0, 3.0],
+							 [1.0, 2.0, 1.0]])
+		let tenA = matA.asTensor()
+		
+		v1[1] = 2.1
+		
+		print(v1)
+		print(t1)
+		
+		XCTAssert(equals(v1[0], t1[0]))
+		XCTAssert(equals(v1[1], t1[1]))
+		
+		
+		matA[1,0] = 0.1
+		print(matA)
+		print(tenA)
+		
+		XCTAssert(equals(matA[0,0], tenA[0,0]))
+		XCTAssert(equals(matA[1,0], tenA[1,0]))
+	}
+	
 //	func testPerformanceSliceLoop() {
 //		// This is an example of a performance test case.
 //		self.measure {

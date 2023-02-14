@@ -75,7 +75,7 @@ extension Numerics where Element: NAccelerateFloatingPoint {
 		
 		withStorageAccess(input, kernel, output) { iaccess, kaccess, oaccess in
 			// TODO: check negative stride is supported for input/output (doc only mentions kernel)
-			Element.mx_conv(iaccess.base, iaccess.stride, kaccess.base, kaccess.stride, oaccess.base, oaccess.stride, numericCast(oaccess.count), numericCast(kaccess.count))
+			Element.mx_conv(iaccess.base, numericCast(iaccess.stride), kaccess.base, numericCast(kaccess.stride), oaccess.base, numericCast(oaccess.stride), numericCast(oaccess.count), numericCast(kaccess.count))
 		}
 	}
 	
@@ -102,7 +102,7 @@ extension Numerics where Element: NAccelerateFloatingPoint {
 		
 		withStorageAccess(result) { racc in
 			// in-place. OK?
-			Element.mx_vrsum(racc.base, racc.stride, 1.0, racc.base, racc.stride, numericCast(racc.count))
+			Element.mx_vrsum(racc.base, numericCast(racc.stride), 1.0, racc.base, numericCast(racc.stride), numericCast(racc.count))
 		}
 		result[0] = a[0]
 		return result
