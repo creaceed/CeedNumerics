@@ -159,7 +159,7 @@ extension NDimensionalArray {
 					let enableMemCopy = variant != .swiftPointerNoMemCopy
 					
 					if enableMemCopy && pfrom.stride == 1 && pself.stride == 1 {
-						pself.base.assign(from: pfrom.base, count: pself.count)
+						pself.base.update(from: pfrom.base, count: pself.count)
 					} else {
 						// let fptr = pfrom.base, sptr = pself.base
 						// let fstr = pfrom.stride, sstr = pself.stride
