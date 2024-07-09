@@ -27,6 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "Utils.h"
 #include <stdio.h>
 #include <assert.h>
+#include <_types/_uint8_t.h>
 
 #define MAX_RANK 16
 
