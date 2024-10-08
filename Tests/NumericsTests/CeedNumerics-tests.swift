@@ -332,14 +332,27 @@ class CeedNumerics_tests_mac: XCTestCase {
 //		let stensor1 = tensor[0, 0~, all, all]
 //		let sval: Double = tensor[1,1,1,1]
 
+		let permutation = [2,1,0]
 		let tensor = NTensord.ramp(size: [2,2,2])
+		let ctensor = NTensord(concatenating: [tensor, tensor, tensor], alongAxis: 1)
+		let rtensor = tensor[~~(-1), n.all, n.all]
+		let rtensor2 = tensor[n.flip, n.all, n.all]
+		let ptensor = tensor.permuting(axes: permutation)
 		let stensor1 = tensor[n.all, 1, n.all]
 		let stensor2 = tensor.insertingNewAxis(at: 0).insertingNewAxis(at: 3)
 		let stensor3 = tensor[n.all, 1, n.newaxis, n.all, n.newaxis]
 		let sval: Double = tensor[1,1,1]
 
-
+		XCTAssert(rtensor.shape == tensor.shape)
+		XCTAssert(equals(rtensor, rtensor2))
 		print("tensor: \(tensor)")
+		print("concatenated: \(ctensor)")
+		
+		print("reversed (0) tensor: \(rtensor)")
+		print("reversed (0) tensor: \(tensor.flipping(axis: 0))")
+		print("reversed (0,2) tensor: \(tensor.flipping(axes: [0, 2]))")
+		print("permuted tensor: \(ptensor)")
+		print("permuted 2x tensor: \(ptensor.permuting(axes: permutation))")
 		print("sub tensor: \(stensor1)")
 		print("new axis tensor: \(stensor2)")
 

@@ -26,10 +26,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import Foundation
 
-struct NGlobals {
+public struct NGlobals {
 	// introduced 'all', because tensor[~, 1, ~] syntax is rejected (multiple candidates for ~)
-	let all: NSlice = .all
-	let newaxis: NAxisOperator = .new
+	public let all: NSlice = .all
+	public let flip: NSlice = .init(start: nil, end: nil, step: -1)
+	public let newaxis: NAxisOperator = .new
+	
+	public init() {}
 }
 
 // namespace for global constants.

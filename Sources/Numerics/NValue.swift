@@ -82,7 +82,8 @@ public protocol NValue {
 	static func random<G: RandomNumberGenerator>(min: Self, max: Self, using generator: inout G) -> Self
 }
 
-extension NValue {
+public extension NValue {
+	static var memoryStride: Int { MemoryLayout<Self>.stride }
 	static func random(min: Self, max: Self) -> Self {
 		var gen = SystemRandomNumberGenerator()
 		return random(min: min, max: max, using: &gen)

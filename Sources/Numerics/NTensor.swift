@@ -28,7 +28,7 @@ import Foundation
 
 // can also be passed as tensor subscript arguments (in addition to slice, index, etc.)
 // see Globals to access it as n.newaxis
-enum NAxisOperator {
+public enum NAxisOperator {
 	case new
 	// case filler // not implemented. Avoids specifying all axes in subscript: a[1~3, filler, 2]
 }
@@ -72,6 +72,38 @@ public struct NTensor<Element: NValue> : NStorageAccessible, NDimensionalArray {
 		self.init(storage: storage, slice: .default(size: size))
 	}
 	
+	public init(concatenating tensors: [Self], alongAxis axis: Axis) {
+		// allocate + N high-perf set
+		precondition(tensors.count >= 2)
+		let first = tensors.first!
+		let rank = first.rank
+		precondition((0 ..< rank).contains(axis))
+		precondition(tensors.allSatisfy { tensor in tensor.rank == rank })
+		precondition(tensors.allSatisfy { tensor in
+			for i in 0 ..< rank { if i != axis && tensor.shape[i] != first.shape[i] { return false } }
+			return true
+		})
+		
+		var concatenatedShape: [Int] = first.shape
+		concatenatedShape[axis] = tensors.map { $0.shape[axis] }.reduce(0, +)
+		
+		self = .init(size: concatenatedShape)
+		
+		// using .all slice for non-axis dimensions
+		var writeSlices: [NSlice] = .init(repeating: .all, count: rank)
+		var offset: Int = 0
+		
+		for tensor in tensors {
+			// for axis dimension: use offset/size
+			writeSlices[axis] = .init(start: offset, end: offset + tensor.size[axis], step: 1)
+			
+			// this triggers optimized copy for appropriate destination in self.
+			self.subtensor(writeSlices).set(from: tensor)
+			
+			offset = writeSlices[axis].end!
+		}
+	}
+	
 	// 'at' is expressed in the receiver axis range
 	public func insertingNewAxis(at: Int) -> Self {
 		precondition(at >= 0 && at <= rank)
@@ -98,6 +130,36 @@ public struct NTensor<Element: NValue> : NStorageAccessible, NDimensionalArray {
 			tensor = tensor.insertingNewAxis(at: i)
 		}
 		return tensor
+	}
+	
+	public func flipping(axis: Axis) -> Self {
+		return flipping(axes: [axis])
+	}
+	public func flipping(axes: [Axis]) -> Self {
+		let axesSet = Set(axes)
+		precondition(axesSet.count == axes.count)
+		precondition(axes.allSatisfy { axis in axis >= 0 && axis < rank } )
+		
+		let components = slice.components.enumerated().map { i_axis, component in
+			if axesSet.contains(i_axis) {
+				return component.flipped()
+			} else {
+				return component
+			}
+		}
+		
+		return Self(storage: storage, slice: NResolvedGenericSlice(components))
+
+	}
+	public func permuting(axes: [Axis]) -> Self {
+		// make sure every axis appears exactly once.
+		precondition(Set(axes) == Set(0..<rank))
+		
+		let permutedSlice: NResolvedGenericSlice = .init(
+			axes.map { slice.components[$0] }
+		)
+		
+		return .init(storage: storage, slice: permutedSlice)
 	}
 	
 	// MARK: - Index resolution

@@ -78,10 +78,10 @@ extension NSliceExpression {
 		} else {
 			sign = -1
 			start = resolveIndex(self.start ?? size-1, size: size)
-			end = resolveIndex(self.end ?? 0, size: size)
+			end = self.end ?? -1 // note: end is not resolved as it does not apply to negative step.
 			assert(start > end)
 		}
-		count = (end-sign-start)/step+1
+		count = (end-sign-start)/step + 1
 		
 		assert(start >= 0 && start < size)
 		assert(count > 0)
@@ -227,6 +227,9 @@ public struct NResolvedSlice: NDimensionalResolvedSlice {
 	}
 	public func compose(within parent: NResolvedSlice) -> NResolvedSlice {
 		return NResolvedSlice(start: parent.position(at: rstart), count: rcount, step: parent.rstep * rstep)
+	}
+	public func flipped() -> NResolvedSlice {
+		return NResolvedSlice(start: rlast, count: rcount, step: -rstep)
 	}
 }
 
