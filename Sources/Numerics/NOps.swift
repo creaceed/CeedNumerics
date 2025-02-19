@@ -109,7 +109,15 @@ extension Numerics where Element: NAccelerateFloatingPoint {
 			Element.mx_vsmsma(aacc.base, numericCast(aacc.stride), asp, bacc.base, numericCast(bacc.stride), bs, oacc.base, numericCast(oacc.stride), numericCast(aacc.count))
 		}
 	}
-	
+	// a * b + c
+	public static func multiplyAdd<DT: NDimensionalArray>(_ a: DT, _ b: DT, _ c: DT, _ output: DT) where DT.Element == Element {
+		precondition(a.size == b.size && a.size == c.size && a.size == output.size)
+		
+		withLinearizedAccesses(a, b, c, output) { aacc, bacc, cacc, oacc in
+			// TODO: check negative stride is supported for input/output (doc only mentions kernel)
+			Element.mx_vma(aacc.base, numericCast(aacc.stride), bacc.base, numericCast(bacc.stride), cacc.base, numericCast(cacc.stride), oacc.base, numericCast(oacc.stride), numericCast(aacc.count))
+		}
+	}
 	public static func lerp<DT: NDimensionalArray>(_ a: DT, _ b: DT, _ t: Element, _ result: DT) where DT.Element == Element {
 		return scaledAdd(a, 1.0-t, b, t, result)
 	}
@@ -159,6 +167,20 @@ extension Numerics where Element: NAccelerateFloatingPoint {
 		}
 		return m
 	}
+	public static func minimum<DT: NDimensionalArray>(_ a: DT, _ b: DT, _ result: DT) where DT.Element == Element {
+		precondition(a.size == b.size && b.size == result.size)
+		
+		withLinearizedAccesses(a, b, result) { aacc, bacc, racc in
+			Element.mx_vmin(aacc.base, numericCast(aacc.stride), bacc.base, numericCast(bacc.stride), racc.base, numericCast(racc.stride), numericCast(racc.count))
+		}
+	}
+	public static func maximum<DT: NDimensionalArray>(_ a: DT, _ b: DT, _ result: DT) where DT.Element == Element {
+		precondition(a.size == b.size && b.size == result.size)
+		
+		withLinearizedAccesses(a, b, result) { aacc, bacc, racc in
+			Element.mx_vmax(aacc.base, numericCast(aacc.stride), bacc.base, numericCast(bacc.stride), racc.base, numericCast(racc.stride), numericCast(racc.count))
+		}
+	}
 	
 	// Deriving new arrays
 	public static func subtract<DT: NDimensionalArray>(_ a: DT, _ b: DT) -> DT where DT.Element == Element { return a._deriving { subtract(a, b, $0) } }
@@ -170,6 +192,10 @@ extension Numerics where Element: NAccelerateFloatingPoint {
 	public static func multiply<DT: NDimensionalArray>(_ a: Element, _ b: DT) -> DT where DT.Element == Element { return b._deriving { multiply(a, b, $0) } }
 	public static func multiply<DT: NDimensionalArray>(_ a: DT, _ b: Element) -> DT where DT.Element == Element { return multiply(b, a) }
 	public static func multiplyElements<DT: NDimensionalArray>(_ a: DT, _ b: DT) -> DT where DT.Element == Element { return a._deriving { multiplyElements(a, b, $0) } }
+	public static func multiplyAdd<DT: NDimensionalArray>(_ a: DT, _ b: DT, _ c: DT) -> DT where DT.Element == Element { return a._deriving { multiplyAdd(a, b, c, $0) } }
+	
+	public static func minimum<DT: NDimensionalArray>(_ a: DT, _ b: DT) -> DT where DT.Element == Element { return a._deriving { minimum(a, b, $0) } }
+	public static func maximum<DT: NDimensionalArray>(_ a: DT, _ b: DT) -> DT where DT.Element == Element { return a._deriving { maximum(a, b, $0) } }
 	
 	// Operators must be implemented under the type itself
 //	public static func +<DT: NDimensionalArray>(lhs: DT, rhs: Element) -> DT where DT.Element == Element { return Numerics.add(lhs, rhs) }

@@ -67,6 +67,11 @@ public protocol NAccelerateFloatingPoint: NValue, NFloatingPoint {
 	static func mx_vsadd(_ A: PointerType, _ IA: vDSP_Stride, _ B: Element, _ C: MutablePointerType, _ IC: vDSP_Stride, _ N: vDSP_Length)
 	static func mx_vadd(_ A: PointerType, _ IA: vDSP_Stride, _ B: PointerType, _ IB: vDSP_Stride, _ C: MutablePointerType, _ IC: vDSP_Stride, _ N: vDSP_Length)
 	static func mx_vsub(_ A: PointerType, _ IA: vDSP_Stride, _ B: PointerType, _ IB: vDSP_Stride, _ C: MutablePointerType, _ IC: vDSP_Stride, _ N: vDSP_Length)
+	static func mx_vma(_ A: PointerType, _ IA: vDSP_Stride, _ B: PointerType, _ IB: vDSP_Stride, _ C: PointerType, _ IC: vDSP_Stride, _ D: MutablePointerType, _ ID: vDSP_Stride, _ N: vDSP_Length)
+	
+	// vector min/max
+	static func mx_vmin(_ A: PointerType, _ IA: vDSP_Stride, _ B: PointerType, _ IB: vDSP_Stride, _ C: MutablePointerType, _ IC: vDSP_Stride, _ N: vDSP_Length)
+	static func mx_vmax(_ A: PointerType, _ IA: vDSP_Stride, _ B: PointerType, _ IB: vDSP_Stride, _ C: MutablePointerType, _ IC: vDSP_Stride, _ N: vDSP_Length)
 	
 	// Reduction & min/max
 	static func mx_measqv(_ A: PointerType, _ IA: vDSP_Stride, C: inout Element, _ N: vDSP_Length)
@@ -135,6 +140,18 @@ extension Double: NAccelerateFloatingPoint {
 	public static func mx_vsub(_ A: PointerType, _ IA: vDSP_Stride, _ B: PointerType, _ IB: vDSP_Stride, _ C: MutablePointerType, _ IC: vDSP_Stride, _ N: vDSP_Length) {
 		_performanceCheckStride(IA, IB, IC)
 		vDSP_vsubD(B, IB, A, IA, C, IC, N)
+	}
+	public static func mx_vma(_ A: PointerType, _ IA: vDSP_Stride, _ B: PointerType, _ IB: vDSP_Stride, _ C: PointerType, _ IC: vDSP_Stride, _ D: MutablePointerType, _ ID: vDSP_Stride, _ N: vDSP_Length) {
+		_performanceCheckStride(IA, IB, IC, ID)
+		vDSP_vmaD(A, IA, B, IB, C, IC, D, ID, N)
+	}
+	public static func mx_vmin(_ A: PointerType, _ IA: vDSP_Stride, _ B: PointerType, _ IB: vDSP_Stride, _ C: MutablePointerType, _ IC: vDSP_Stride, _ N: vDSP_Length) {
+		_performanceCheckStride(IA, IB, IC)
+		vDSP_vminD(A, IA, B, IB, C, IC, N)
+	}
+	public static func mx_vmax(_ A: PointerType, _ IA: vDSP_Stride, _ B: PointerType, _ IB: vDSP_Stride, _ C: MutablePointerType, _ IC: vDSP_Stride, _ N: vDSP_Length) {
+		_performanceCheckStride(IA, IB, IC)
+		vDSP_vmaxD(A, IA, B, IB, C, IC, N)
 	}
 	public static func mx_meanv(_ A: PointerType, _ IA: vDSP_Stride, C: inout Element, _ N: vDSP_Length) {
 		_performanceCheckStride(IA)
@@ -214,6 +231,18 @@ extension Float: NAccelerateFloatingPoint {
 	public static func mx_vsub(_ A: PointerType, _ IA: vDSP_Stride, _ B: PointerType, _ IB: vDSP_Stride, _ C: MutablePointerType, _ IC: vDSP_Stride, _ N: vDSP_Length) {
 		_performanceCheckStride(IA, IB, IC)
 		vDSP_vsub(B, IB, A, IA, C, IC, N)
+	}
+	public static func mx_vma(_ A: PointerType, _ IA: vDSP_Stride, _ B: PointerType, _ IB: vDSP_Stride, _ C: PointerType, _ IC: vDSP_Stride, _ D: MutablePointerType, _ ID: vDSP_Stride, _ N: vDSP_Length) {
+		_performanceCheckStride(IA, IB, IC, ID)
+		vDSP_vma(A, IA, B, IB, C, IC, D, ID, N)
+	}
+	public static func mx_vmin(_ A: PointerType, _ IA: vDSP_Stride, _ B: PointerType, _ IB: vDSP_Stride, _ C: MutablePointerType, _ IC: vDSP_Stride, _ N: vDSP_Length) {
+		_performanceCheckStride(IA, IB, IC)
+		vDSP_vmin(A, IA, B, IB, C, IC, N)
+	}
+	public static func mx_vmax(_ A: PointerType, _ IA: vDSP_Stride, _ B: PointerType, _ IB: vDSP_Stride, _ C: MutablePointerType, _ IC: vDSP_Stride, _ N: vDSP_Length) {
+		_performanceCheckStride(IA, IB, IC)
+		vDSP_vmax(A, IA, B, IB, C, IC, N)
 	}
 	public static func mx_meanv(_ A: PointerType, _ IA: vDSP_Stride, C: inout Element, _ N: vDSP_Length) {
 		_performanceCheckStride(IA)

@@ -340,6 +340,21 @@ extension Numerics {
 			}
 		}
 	}
+	public static func withLinearizedAccesses<T: NStorageAccessible>(_ a: T, _ b: T, _ c: T, _ d: T, _ access: (Storage.LinearAccess, Storage.LinearAccess, Storage.LinearAccess, Storage.LinearAccess) -> Void) where T.Element == Element {
+		precondition(a.size == b.size && a.size == c.size && a.size == d.size)
+		a._withStorageAccess { aacc in
+			b._withStorageAccess { bacc in
+				c._withStorageAccess { cacc in
+					d._withStorageAccess { dacc in
+						let coalesce = aacc.compact && bacc.compact && cacc.compact && dacc.compact
+						for (alin, (blin, (clin, dlin))) in zip(aacc.linearized(coalesce: coalesce), zip(bacc.linearized(coalesce: coalesce), zip(cacc.linearized(coalesce: coalesce), dacc.linearized(coalesce: coalesce)))) {
+							access(alin, blin, clin, dlin)
+						}
+					}
+				}
+			}
+		}
+	}
 	// MARK: - Storage/Value Stride
 	
 	

@@ -191,6 +191,22 @@ class CeedNumerics_tests_mac: XCTestCase {
 		XCTAssert(equals(tmin, 0.0) && equals(tmax, 26.0))
 		XCTAssert(equals(mmin, 0.0) && equals(mmax, 8.0))
 		XCTAssert(equals(vmin, 0.0) && equals(vmax, 2.0))
+		
+		
+		let tensor_m1 = NTensord.ramp(size: [3,3,3])
+		let tensor_m2 = tensor_m1.flipping(axes: [2])
+		let tensor_m3 = Numerics.minimum(tensor_m1, tensor_m2)
+		
+		print("tensor min: \(tensor_m3)")
+		XCTAssert(equals(tensor_m3[0,0,0], 0.0) && equals(tensor_m3[0,0,2], 0.0))
+		
+		let tensor_s1 = NTensord.ramp(size: [2,2])
+		let tensor_s2 = NTensord(repeating: 2.0, size: [2,2])
+		let tensor_s3 = NTensord(repeating: 0.5, size: [2,2])
+		let tensor_s4 = Numerics.multiplyAdd(tensor_s1, tensor_s2, tensor_s3)
+		
+		print("tensor s4: \(tensor_s4)")
+		XCTAssert(equals(tensor_s4[1,1], 6.5))
 	}
 	
 	func testDimensionality() {
