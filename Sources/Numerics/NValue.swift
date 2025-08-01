@@ -100,8 +100,15 @@ extension NFloatingPoint /*where Self.RawSignificand : FixedWidthInteger*/ {
 	}
 }
 
+
+
+// they got NFloatingPoint through NAccelerateFloatingPoint
 extension Double: NValue, NAdditiveNumeric {}
 extension Float: NValue, NAdditiveNumeric {}
+//@available(macOS 11.0, iOS 14.0, macCatalyst 14.0, *)
+#if arch(arm64)
+extension Float16: NValue, NAdditiveNumeric, NFloatingPoint {}
+#endif
 
 extension Int: NValue, NAdditiveNumeric {
 	public var descriptionValueString : String { return String(format: "%6d", self) }
@@ -111,6 +118,9 @@ extension Int: NValue, NAdditiveNumeric {
 		return Int.random(in: min...max, using: &generator)
 	}
 }
+
+// Note: currently problematic with NFloat16 where Float16 isn't available (UInt16 fallback), won't behave as expected.
+extension UInt16: @retroactive SignedNumeric {}
 extension UInt16: NValue, NAdditiveNumeric {
 	public var descriptionValueString : String { return String(format: "%6d", self) }
 	public static var none: Self { return 0 }

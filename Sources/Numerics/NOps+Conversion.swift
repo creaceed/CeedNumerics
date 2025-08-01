@@ -57,9 +57,9 @@ extension Numerics {
 			guard svim.width == dvim.width else { fatalError("not supported") }
 			
 			let err: vImage_Error
-			if DT1.Element.self == NOpaqueFloat16.self && DT2.Element.self == Float.self {
+			if (DT1.Element.self == NOpaqueFloat16.self || DT1.Element.self == NFloat16.self) && DT2.Element.self == Float.self {
 				err = vImageConvert_Planar16FtoPlanarF(&svim, &dvim, 0)
-			} else if DT1.Element.self == Float.self && DT2.Element.self == NOpaqueFloat16.self {
+			} else if DT1.Element.self == Float.self && (DT2.Element.self == NOpaqueFloat16.self || DT2.Element.self == NFloat16.self) {
 				err = vImageConvert_PlanarFtoPlanar16F(&svim, &dvim, 0)
 			} else {
 				fatalError("not supported")

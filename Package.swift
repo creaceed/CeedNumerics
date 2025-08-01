@@ -1,4 +1,4 @@
-// swift-tools-version:5.1
+// swift-tools-version:5.5
 
 /*
 Copyright (c) 2018-present Creaceed SPRL and other CeedNumerics contributors.
@@ -31,6 +31,14 @@ import PackageDescription
 
 let package = Package(
 	name: "Numerics",
+	
+	// this is for simplifying Float16 handling.
+	platforms: [
+		.macOS(.v11),
+		.iOS(.v14),
+		.macCatalyst(.v14),
+		.tvOS(.v14)
+	],
 	products: [
 		// Products define the executables and libraries produced by a package, and make them visible to other packages.
 		.library(

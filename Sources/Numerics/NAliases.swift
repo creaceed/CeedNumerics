@@ -38,19 +38,40 @@ public struct NGlobals {
 // namespace for global constants.
 let n = NGlobals()
 
-public typealias NVectorh = NTensor<NOpaqueFloat16>
+
+// NFloat16 is Float16 for platforms that suport it, and UInt16 for other
+// This allows simpler use at call site with a single type (NFloat16) for
+// both platforms when only storage is needed (GPU send/receive, etc).
+//
+// NFloat16.asFloat16(_: Float) can provide values in array initializers like
+// init(repeating: _) on both platforms from same code.
+
+#if arch(arm64)
+//@available(macOS 11.0, iOS 14.0, macCatalyst 14.0, *)
+public typealias NFloat16 = Float16
+#else
+public typealias NFloat16 = NOpaqueFloat16
+#endif
+
+extension NGlobals {
+	static func isFloat16Supported() -> Bool {
+		return NFloat16.self != NOpaqueFloat16.self
+	}
+}
+
+public typealias NVectorh = NTensor<NFloat16>
 public typealias NVectorf = NVector<Float>
 public typealias NVectord = NVector<Double>
 public typealias NVectori = NVector<Int>
 public typealias NVectorb = NVector<Bool>
 
-public typealias NMatrixh = NTensor<NOpaqueFloat16>
+public typealias NMatrixh = NTensor<NFloat16>
 public typealias NMatrixf = NMatrix<Float>
 public typealias NMatrixd = NMatrix<Double>
 public typealias NMatrixi = NMatrix<Int>
 public typealias NMatrixb = NMatrix<Bool>
 
-public typealias NTensorh = NTensor<NOpaqueFloat16>
+public typealias NTensorh = NTensor<NFloat16>
 public typealias NTensorf = NTensor<Float>
 public typealias NTensord = NTensor<Double>
 public typealias NTensori = NTensor<Int>
