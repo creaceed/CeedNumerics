@@ -271,7 +271,7 @@ extension Float: NAccelerateFloatingPoint {
 // Type is typically Float, but other types are also possible
 public extension NStorage.QuadraticAccess where Element == Float {
 	var vImage: vImage_Buffer {
-		let bpe = MemoryLayout<Self>.stride
+		let bpe = MemoryLayout<Element>.stride
 		return vImage_Buffer(data: self.base, height: numericCast(self.count.row), width: numericCast(self.count.column), rowBytes: bpe * self.stride.row)
 	}
 }
@@ -280,7 +280,7 @@ public extension NDimensionalStorageAccess {
 	var compactBufferAsVImage: vImage_Buffer? {
 		guard let buf = compactBuffer else { return nil }
 		
-		let bpe = MemoryLayout<Self>.stride
+		let bpe = MemoryLayout<Element>.stride
 		return vImage_Buffer(data: buf.baseAddress, height: 1, width: numericCast(buf.count), rowBytes: bpe * buf.count)
 	}
 }
