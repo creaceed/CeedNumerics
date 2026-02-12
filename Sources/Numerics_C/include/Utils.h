@@ -26,6 +26,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <stddef.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 // Setter
 extern void strided_set_float(long rank, long const *shape, size_t bpe, float *dest, size_t const *dstrides, float const *src, size_t const *sstrides);
@@ -33,3 +34,13 @@ extern void strided_set_gen(long rank, long const *shape, size_t bpe, void *dest
 
 // In-place flipping
 extern void flip_gen(long rank, long const *shape, size_t bpe, void *dest, size_t const *dstrides, const bool *axes);
+
+// UInt16 bit shifts (strided)
+extern void strided_shift_left_u16(long count, uint16_t const *src, long sstride, uint16_t *dest, long dstride, int bits);
+extern void strided_shift_right_u16(long count, uint16_t const *src, long sstride, uint16_t *dest, long dstride, int bits);
+extern void strided_shift_left_u8(long count, uint8_t const *src, long sstride, uint8_t *dest, long dstride, int bits);
+extern void strided_shift_right_u8(long count, uint8_t const *src, long sstride, uint8_t *dest, long dstride, int bits);
+extern void strided_shift_left_u32(long count, uint32_t const *src, long sstride, uint32_t *dest, long dstride, int bits);
+extern void strided_shift_right_u32(long count, uint32_t const *src, long sstride, uint32_t *dest, long dstride, int bits);
+extern void strided_shift_left_u64(long count, uint64_t const *src, long sstride, uint64_t *dest, long dstride, int bits);
+extern void strided_shift_right_u64(long count, uint64_t const *src, long sstride, uint64_t *dest, long dstride, int bits);

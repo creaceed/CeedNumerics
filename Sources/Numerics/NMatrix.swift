@@ -66,6 +66,28 @@ public struct NMatrix<Element: NValue> : NStorageAccessible, NDimensionalArray {
 	public init(storage s: Storage, slices sl: (row: NResolvedSlice, column: NResolvedSlice)) {
 		self.init(storage: s, slice: NResolvedQuadraticSlice(row: sl.0, column: sl.1))
 	}
+	public init(storage s: Storage, rows: Int, columns: Int, rowStride: Int, offset: Int = 0) {
+		precondition(rows >= 0 && columns >= 0)
+		precondition(rowStride >= columns)
+		precondition(offset >= 0)
+		
+		let needed = (rows > 0 && columns > 0) ? (offset + (rows - 1) * rowStride + columns) : offset
+		precondition(needed <= s.count, "Storage too small for requested matrix layout")
+		
+		let rowSlice = NResolvedSlice(start: offset, count: rows, step: rowStride)
+		let colSlice = NResolvedSlice(start: 0, count: columns, step: 1)
+		self.init(storage: s, slices: (row: rowSlice, column: colSlice))
+	}
+	public init(storage s: Storage, rows: Int, columns: Int, rowBytes: Int, offsetBytes: Int = 0) {
+		let bpe = MemoryLayout<Element>.stride
+		precondition(rowBytes >= 0 && offsetBytes >= 0)
+		precondition(rowBytes % bpe == 0, "rowBytes must be a multiple of element stride")
+		precondition(offsetBytes % bpe == 0, "offsetBytes must be a multiple of element stride")
+		
+		let rowStride = rowBytes / bpe
+		let offset = offsetBytes / bpe
+		self.init(storage: s, rows: rows, columns: columns, rowStride: rowStride, offset: offset)
+	}
 	public init(compactData: Data, rows: Int, columns: Int) {
 		precondition(compactData.count == rows * columns * MemoryLayout<Element>.stride)
 		

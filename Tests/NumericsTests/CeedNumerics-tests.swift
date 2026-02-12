@@ -41,6 +41,14 @@ func equals<DT: NDimensionalArray>(_ lhs: DT, _ rhs: DT) -> Bool where DT.Elemen
 	return lhs.isEqual(to: rhs, tolerance: tolerance)
 }
 
+func equalsExact<DT: NDimensionalArray>(_ lhs: DT, _ rhs: DT) -> Bool where DT.Element: Equatable {
+	guard lhs.shape == rhs.shape else { return false }
+	for (lidx, ridx) in zip(lhs.indices, rhs.indices) {
+		if lhs[lidx] != rhs[ridx] { return false }
+	}
+	return true
+}
+
 func timed(_ label: String, block: ()->()) {
 	let date = Date()
 	block()
@@ -319,6 +327,81 @@ class CeedNumerics_tests_mac: XCTestCase {
 		XCTAssert(equals(v1, v2))
 		
 		
+	}
+
+	func testUInt16BitShifts() {
+		let v = NVector<UInt16>([1, 2, 3, 255, 0x8000])
+		let l = Numerics.shiftLeft(v, by: 1)
+		let r = Numerics.shiftRight(v, by: 1)
+		
+		XCTAssert(equalsExact(l, NVector<UInt16>([2, 4, 6, 510, 0])))
+		XCTAssert(equalsExact(r, NVector<UInt16>([0, 1, 1, 127, 0x4000])))
+		
+		let zleft = Numerics.shiftLeft(v, by: 16)
+		let zright = Numerics.shiftRight(v, by: 18)
+		XCTAssert(equalsExact(zleft, NVector<UInt16>(repeating: 0, size: v.size)))
+		XCTAssert(equalsExact(zright, NVector<UInt16>(repeating: 0, size: v.size)))
+		
+		let inplace = NVector<UInt16>([1, 2, 3, 4, 5, 6])
+		inplace[0~6~2] <<= 1
+		XCTAssert(equalsExact(inplace, NVector<UInt16>([2, 2, 6, 4, 10, 6])))
+		
+		let m = NMatrix<UInt16>([[1, 2, 3, 4],
+								 [5, 6, 7, 8]])
+		let ms = m[~, 0~4~2]
+		let mout = NMatrix<UInt16>(rows: ms.rows, columns: ms.columns)
+		Numerics.shiftLeft(ms, by: 1, mout)
+		
+		XCTAssert(equalsExact(mout, NMatrix<UInt16>([[2, 6],
+													 [10, 14]])))
+		
+		let t = NTensor<UInt16>.ramp(size: [2, 2, 2])
+		let tout = Numerics.shiftRight(t, by: 1)
+		let expected = NTensor<UInt16>(values: [0, 0, 1, 1, 2, 2, 3, 3], size: [2, 2, 2])
+		XCTAssert(equalsExact(tout, expected))
+	}
+
+	func testUnsignedBitShifts() {
+		let v8 = NVector<UInt8>([1, 2, 255])
+		XCTAssert(equalsExact(Numerics.shiftLeft(v8, by: 1), NVector<UInt8>([2, 4, 254])))
+		XCTAssert(equalsExact(Numerics.shiftRight(v8, by: 1), NVector<UInt8>([0, 1, 127])))
+		XCTAssert(equalsExact(Numerics.shiftLeft(v8, by: 8), NVector<UInt8>(repeating: 0, size: v8.size)))
+		
+		let v32 = NVector<UInt32>([1, 2, 0x8000_0000, 0xFFFF_FFFF])
+		XCTAssert(equalsExact(Numerics.shiftLeft(v32, by: 1), NVector<UInt32>([2, 4, 0, 0xFFFF_FFFE])))
+		XCTAssert(equalsExact(Numerics.shiftRight(v32, by: 1), NVector<UInt32>([0, 1, 0x4000_0000, 0x7FFF_FFFF])))
+		XCTAssert(equalsExact(Numerics.shiftRight(v32, by: 32), NVector<UInt32>(repeating: 0, size: v32.size)))
+		
+		let v64 = NVector<UInt64>([1, 2, 0x8000_0000_0000_0000, 0xFFFF_FFFF_FFFF_FFFF])
+		XCTAssert(equalsExact(Numerics.shiftLeft(v64, by: 1), NVector<UInt64>([2, 4, 0, 0xFFFF_FFFF_FFFF_FFFE])))
+		XCTAssert(equalsExact(Numerics.shiftRight(v64, by: 1), NVector<UInt64>([0, 1, 0x4000_0000_0000_0000, 0x7FFF_FFFF_FFFF_FFFF])))
+		XCTAssert(equalsExact(Numerics.shiftLeft(v64, by: 64), NVector<UInt64>(repeating: 0, size: v64.size)))
+		
+		let inplace = NVector<UInt32>([1, 2, 3, 4, 5, 6])
+		inplace[0~6~2] >>= 1
+		XCTAssert(equalsExact(inplace, NVector<UInt32>([0, 2, 1, 4, 2, 6])))
+	}
+	
+	func testMatrixStorageStrideInitializers() {
+		let storage = NStorage<UInt16>(allocatedCount: 12, value: 999)
+		storage[1] = 10
+		storage[2] = 11
+		storage[3] = 12
+		storage[5] = 20
+		storage[6] = 21
+		storage[7] = 22
+		
+		let mElem = NMatrix<UInt16>(storage: storage, rows: 2, columns: 3, rowStride: 4, offset: 1)
+		XCTAssert(equalsExact(mElem, NMatrix<UInt16>([[10, 11, 12],
+													   [20, 21, 22]])))
+		
+		let mBytes = NMatrix<UInt16>(storage: storage, rows: 2, columns: 3, rowBytes: 8, offsetBytes: 2)
+		XCTAssert(equalsExact(mBytes, NMatrix<UInt16>([[10, 11, 12],
+													   [20, 21, 22]])))
+		
+		mBytes[1, 2] = 77
+		XCTAssert(storage[7] == 77)
+		XCTAssert(storage[4] == 999) // padding untouched
 	}
 	
 	func testBasicTensors() {

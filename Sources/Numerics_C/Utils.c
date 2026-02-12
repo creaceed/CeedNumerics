@@ -27,7 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "Utils.h"
 #include <stdio.h>
 #include <assert.h>
-#include <_types/_uint8_t.h>
+#include <stdint.h>
 
 #define MAX_RANK 16
 
@@ -224,5 +224,117 @@ extern void flip_gen(long rank, long const *shape, size_t bpe, void *dest_v, siz
 			}
 			break;
 		}
+	}
+}
+
+void strided_shift_left_u16(long count, uint16_t const *src, long sstride, uint16_t *dest, long dstride, int bits) {
+	if (count <= 0) return;
+	if (bits >= 16) {
+		for (long i = 0; i < count; i++) {
+			dest[i * dstride] = 0;
+		}
+		return;
+	}
+	
+	for (long i = 0; i < count; i++) {
+		dest[i * dstride] = (uint16_t)(src[i * sstride] << bits);
+	}
+}
+
+void strided_shift_right_u16(long count, uint16_t const *src, long sstride, uint16_t *dest, long dstride, int bits) {
+	if (count <= 0) return;
+	if (bits >= 16) {
+		for (long i = 0; i < count; i++) {
+			dest[i * dstride] = 0;
+		}
+		return;
+	}
+	
+	for (long i = 0; i < count; i++) {
+		dest[i * dstride] = (uint16_t)(src[i * sstride] >> bits);
+	}
+}
+
+void strided_shift_left_u8(long count, uint8_t const *src, long sstride, uint8_t *dest, long dstride, int bits) {
+	if (count <= 0) return;
+	if (bits >= 8) {
+		for (long i = 0; i < count; i++) {
+			dest[i * dstride] = 0;
+		}
+		return;
+	}
+	
+	for (long i = 0; i < count; i++) {
+		dest[i * dstride] = (uint8_t)(src[i * sstride] << bits);
+	}
+}
+
+void strided_shift_right_u8(long count, uint8_t const *src, long sstride, uint8_t *dest, long dstride, int bits) {
+	if (count <= 0) return;
+	if (bits >= 8) {
+		for (long i = 0; i < count; i++) {
+			dest[i * dstride] = 0;
+		}
+		return;
+	}
+	
+	for (long i = 0; i < count; i++) {
+		dest[i * dstride] = (uint8_t)(src[i * sstride] >> bits);
+	}
+}
+
+void strided_shift_left_u32(long count, uint32_t const *src, long sstride, uint32_t *dest, long dstride, int bits) {
+	if (count <= 0) return;
+	if (bits >= 32) {
+		for (long i = 0; i < count; i++) {
+			dest[i * dstride] = 0;
+		}
+		return;
+	}
+	
+	for (long i = 0; i < count; i++) {
+		dest[i * dstride] = (uint32_t)(src[i * sstride] << bits);
+	}
+}
+
+void strided_shift_right_u32(long count, uint32_t const *src, long sstride, uint32_t *dest, long dstride, int bits) {
+	if (count <= 0) return;
+	if (bits >= 32) {
+		for (long i = 0; i < count; i++) {
+			dest[i * dstride] = 0;
+		}
+		return;
+	}
+	
+	for (long i = 0; i < count; i++) {
+		dest[i * dstride] = (uint32_t)(src[i * sstride] >> bits);
+	}
+}
+
+void strided_shift_left_u64(long count, uint64_t const *src, long sstride, uint64_t *dest, long dstride, int bits) {
+	if (count <= 0) return;
+	if (bits >= 64) {
+		for (long i = 0; i < count; i++) {
+			dest[i * dstride] = 0;
+		}
+		return;
+	}
+	
+	for (long i = 0; i < count; i++) {
+		dest[i * dstride] = (uint64_t)(src[i * sstride] << bits);
+	}
+}
+
+void strided_shift_right_u64(long count, uint64_t const *src, long sstride, uint64_t *dest, long dstride, int bits) {
+	if (count <= 0) return;
+	if (bits >= 64) {
+		for (long i = 0; i < count; i++) {
+			dest[i * dstride] = 0;
+		}
+		return;
+	}
+	
+	for (long i = 0; i < count; i++) {
+		dest[i * dstride] = (uint64_t)(src[i * sstride] >> bits);
 	}
 }
